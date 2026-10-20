@@ -6,6 +6,8 @@ import type {
   DefectRow,
   HomeSnapshot,
   LogEntry,
+  NodeAnalysis,
+  SessionInfo,
   SettingsSnapshot,
   SystemStats,
   TeachSnapshot,
@@ -24,6 +26,10 @@ export interface ApiClient {
   getWorkbench(): Promise<WorkbenchSnapshot>
   /** The specification trees (Unit and Dummy) of the TEACH page. */
   getTeach(): Promise<TeachSnapshot>
+  /** The three Image Analysis tables of one node of the specification tree. */
+  getNodeAnalysis(nodeId: string): Promise<NodeAnalysis>
+  /** The signed-in user and the accounts of the "Log in/out" dialog. */
+  getSession(): Promise<SessionInfo>
   /** The defects of the strip on the REVIEW page (empty until an inspection has run). */
   getDefects(): Promise<DefectRow[]>
   /** The light strip picture and the 20 channels of the CALIBRATE page. */

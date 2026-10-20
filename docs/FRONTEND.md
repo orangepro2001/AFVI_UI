@@ -139,6 +139,7 @@ interface ApiClient {
 | `ScrollBar` | 方头滚动条（轨道、两端箭头、深色滑块）：只负责画，滚动由使用者做、把滑块位置传进来；无头 Chrome 不画原生滚动条，所以树和表格的滚动条都用它 |
 | `ToggleSwitch` | 药丸开关，`variant` 为 `big`（校准页总开关）、`small`（表格行）、`mask`（设置页掩膜）；`role="switch"`，`v-model` |
 | `MaskSlider` | 0..1 的双色滑块（左红右绿、金色圆钮、数值与刻度），指针与键盘（±0.01、Home/End）可操作 |
+| `AppDialog` | Win32 风格的模态对话框壳（reka-ui Dialog）：40% 遮罩、2px 边框、18px 标题栏、固定 440×292；`[data-autofocus]` 的第一个元素在打开时拿到焦点 |
 | `LogConsole` | 日志控制台：跟随最新一行，操作员上滚去看旧日志时停止跟随；`notice` 级别的行用 `text-notice` |
 
 `components/charts`：`LineChart`（折线加面积，坐标计算在 `geometry.ts`）、`RingGauge`（环形仪表）。图表的颜色全部来自 `--chart-*`/`--gauge-*`。
@@ -159,4 +160,5 @@ interface ApiClient {
 
 - 单元测试放在被测文件旁边（`*.test.ts`），跨文件的契约放 `frontend/tests/`。
 - 组件测试用 `@vue/test-utils` + happy-dom（参见 `DataGrid.test.ts`）。
+- 选中节点相关：`stores/teach.ts` 的 `select(id)` 决定查看器模式（`strip` / `align` / `blank`）和分析表（`getNodeAnalysis`，失败时表清空）；`stores/workbench.ts` 的 `toolsLocked` 在非 `strip` 模式锁住工具栏，`pointerSeen` 控制 Align 读数栏是否出现。
 - 模拟后端提供 `live: false` 选项，让数据停在种子上，测试结果稳定。

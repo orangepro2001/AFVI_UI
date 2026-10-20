@@ -7,9 +7,10 @@ import type { SpecSet } from '@/api/types'
 const props = withDefaults(
   defineProps<{
     spec: SpecSet
+    enabled?: boolean
     class?: HTMLAttributes['class']
   }>(),
-  { class: undefined },
+  { enabled: false, class: undefined },
 )
 
 const emit = defineEmits<{ 'toggle-overlay': [key: 'mk' | 'ac' | 'ic' | 'sk'] }>()
@@ -76,11 +77,21 @@ const overlays: { key: 'mk' | 'ac' | 'ic' | 'sk'; label: string; left: number }[
         @click="emit('toggle-overlay', item.key)"
       >
         <span
-          :class="cn('flex size-[11px] items-center justify-center border border-tool-disabled')"
+          :class="
+            cn(
+              'flex size-[11px] items-center justify-center border',
+              props.enabled ? 'border-muted-foreground' : 'border-tool-disabled',
+            )
+          "
         >
-          <Check v-if="props.spec.overlay[item.key]" class="size-[9px] text-subtle" />
+          <Check
+            v-if="props.spec.overlay[item.key]"
+            :class="cn('size-[9px]', props.enabled ? 'text-foreground' : 'text-subtle')"
+          />
         </span>
-        <span class="ml-1 text-3xs text-subtle">{{ item.label }}</span>
+        <span :class="cn('ml-1 text-3xs', props.enabled ? 'text-foreground' : 'text-subtle')">
+          {{ item.label }}
+        </span>
       </button>
     </div>
   </div>

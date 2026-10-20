@@ -7,11 +7,25 @@ import ReadoutBar from '@/features/workbench/ReadoutBar.vue'
 import StripViewer from '@/features/workbench/StripViewer.vue'
 import ThumbnailPanel from '@/features/workbench/ThumbnailPanel.vue'
 import ToolButtons from '@/features/workbench/ToolButtons.vue'
+import type { ImageRef } from '@/api/types'
 import { useMachineStore } from '@/stores/machine'
 import { useWorkbenchStore } from '@/stores/workbench'
 
+const props = withDefaults(
+  defineProps<{
+    image?: ImageRef | null
+    imageTop?: number
+    readout?: 'full' | 'xy' | 'none'
+  }>(),
+  { image: undefined, imageTop: 15, readout: 'full' },
+)
+
 const store = useWorkbenchStore()
 const machine = useMachineStore()
+
+function pointAt(x: number, y: number) {
+  store.pointAt(x, y, props.image ?? undefined)
+}
 
 onMounted(() => void store.load())
 </script>
@@ -30,12 +44,22 @@ onMounted(() => void store.load())
             <CellMap class="absolute top-[8px] left-[15px]" :grid="store.snapshot.cells" />
           </div>
         </div>
-        <StripViewer :image="store.snapshot.image" @pointer="store.pointAt">
+        <StripViewer
+          :image="props.image === undefined ? store.snapshot.image : props.image"
+          :top="props.imageTop"
+          @pointer="pointAt"
+        >
           <template #overlay><slot name="overlay" /></template>
           <template #tools><slot name="tools" /></template>
         </StripViewer>
       </div>
-      <ReadoutBar :readout="store.readout" />
+      <ReadoutBar v-if="props.readout === 'full'" :readout="store.readout" />
+      <ReadoutBar
+        v-else-if="props.readout === 'xy' && store.pointerSeen"
+        :readout="store.readout"
+        variant="xy"
+      />
+      <div v-else class="h-[35px] shrink-0 bg-card" />
       <LogConsole :entries="machine.logs" class="mt-[4px] h-[157px] shrink-0" />
     </div>
     <aside class="w-aside shrink-0"><slot name="aside" /></aside>

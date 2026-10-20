@@ -115,6 +115,25 @@
   --spec-silver: #c0c0c0; /* DMG */
   --spec-violet: #6633fe; /* ETC and its items */
   --spec-line: #8a8a8e; /* tree connector lines */
+  --spec-selected: #ff4400; /* the chip of the node picked in the tree */
+
+  /* --- Image Analysis tables ------------------------------------------------------------------- */
+  --analysis-green: #4fd263; /* names of the mask and defect rows */
+  --analysis-yellow: #e2e23a; /* names of the chain rows */
+  --analysis-plain: #a9bfd4; /* names of the other rows */
+  --analysis-value: #e6e6d6; /* the numbers of the Value and Min columns */
+  --analysis-no: #a5b3c0; /* the row numbers */
+  --switch-off: #929292; /* body of an off switch in a table row */
+  --switch-off-knob: #646464;
+
+  /* --- Dialogs (the Windows-style "Log in/out" window) ----------------------------------------- */
+  --dialog-veil: #353535; /* laid over the whole window at 40% while a dialog is open */
+  --dialog-border: #1c6b9a; /* the 2px frame */
+  --dialog-title: #252525; /* the title bar */
+  --dialog-field: #363538; /* text fields */
+  --dialog-form: #303032; /* the form area under the user list */
+  --dialog-line: #4e4e50; /* border of the default button */
+  --dialog-line-dim: #3e3e40; /* border of the other buttons */
 
   /* --- Calibration and settings controls ------------------------------------------------------ */
   --switch-on: #72b824; /* the big ON/OFF switch of the calibration page */

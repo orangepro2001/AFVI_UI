@@ -20,12 +20,13 @@ const props = withDefaults(
   defineProps<{
     nodes: SpecNode[]
     checked: Record<string, boolean>
+    selectedId: string | null
     class?: HTMLAttributes['class']
   }>(),
   { class: undefined },
 )
 
-const emit = defineEmits<{ toggle: [id: string] }>()
+const emit = defineEmits<{ toggle: [id: string]; select: [id: string] }>()
 
 const layout = computed(() => layoutSpecTree(props.nodes))
 
@@ -84,6 +85,7 @@ function step(direction: -1 | 1) {
   <div :class="cn('relative h-full bg-muted', props.class)">
     <div
       ref="scroller"
+      data-spec-scroller
       class="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       @scroll="measure"
     >
@@ -128,11 +130,13 @@ function step(direction: -1 | 1) {
           <SpecChip
             :label="row.node.name"
             :tone="row.node.tone"
+            :selected="props.selectedId === row.node.id"
             :class="
               cn('absolute', row.level === 0 ? 'left-[29px] w-[92px]' : 'left-[75px] w-[93px]')
             "
             :style="{ top: `${row.y}px`, height: `${CHIP_HEIGHT}px` }"
             :data-row="index"
+            @click="emit('select', row.node.id)"
           />
         </template>
       </div>

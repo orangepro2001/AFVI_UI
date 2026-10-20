@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
+import { useWorkbenchStore } from '@/stores/workbench'
 import ToolButtons from './ToolButtons.vue'
 
 function mountToolButtons() {
@@ -34,6 +35,19 @@ describe('ToolButtons', () => {
     const network = wrapper.find('[aria-label="Network"]')
     expect(network.exists()).toBe(true)
     expect(network.attributes('style')).toContain('left: 0px')
+  })
+
+  it('disables the tool group while tools are locked', async () => {
+    const wrapper = mountToolButtons()
+    const store = useWorkbenchStore()
+
+    store.toolsLocked = false
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[aria-label="Ruler"]').attributes('disabled')).toBeUndefined()
+
+    store.toolsLocked = true
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[aria-label="Ruler"]').attributes('disabled')).toBeDefined()
   })
 
   it('places the last channel at the right of the group', () => {

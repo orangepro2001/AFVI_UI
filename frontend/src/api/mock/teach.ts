@@ -1,4 +1,7 @@
-import type { AlignLine, SpecNode, SpecSet, SpecTone, TeachSnapshot } from '@/api/types'
+import alignDmg from '@/assets/mock/align-dmg.png'
+import alignMetal from '@/assets/mock/align-metal.png'
+import alignSr from '@/assets/mock/align-sr.png'
+import type { AlignKind, AlignLine, SpecNode, SpecSet, SpecTone, TeachSnapshot } from '@/api/types'
 
 /** A node description used to build the trees: the id gets its `u-`/`d-` prefix. */
 interface NodeSpec {
@@ -7,6 +10,8 @@ interface NodeSpec {
   tone: SpecTone
   /** Omitted for nodes without a checkbox (the children of Align / ROI). */
   checked?: boolean
+  /** The node whose selection shows that align picture. */
+  align?: AlignKind
   children?: NodeSpec[]
 }
 
@@ -34,9 +39,9 @@ const UNIT_TREE: NodeSpec[] = [
     name: 'Align / ROI',
     tone: 'root',
     children: [
-      { id: 'metal', name: 'Metal', tone: 'gold' },
-      { id: 'sr', name: 'SR', tone: 'green' },
-      { id: 'dmg', name: 'DMG', tone: 'silver' },
+      { id: 'metal', name: 'Metal', tone: 'gold', align: 'metal' },
+      { id: 'sr', name: 'SR', tone: 'green', align: 'sr' },
+      { id: 'dmg', name: 'DMG', tone: 'silver', align: 'dmg' },
     ],
   },
   {
@@ -87,7 +92,8 @@ const UNIT_TREE: NodeSpec[] = [
       { id: 'nonmetal-spacethick', name: 'SpaceThick', tone: 'green', checked: false },
       { id: 'nonmetal-open1', name: 'Open1', tone: 'green', checked: false },
       { id: 'nonmetal-etchback', name: 'EtchBack', tone: 'green', checked: false },
-      { id: 'nonmetal-open2', name: 'Open2', tone: 'green', checked: false },
+      { id: 'nonmetal-via', name: 'VIA', tone: 'green', checked: false },
+      { id: 'nonmetal-laser-marking', name: 'Laser Marking', tone: 'green', checked: false },
     ],
   },
   {
@@ -95,11 +101,7 @@ const UNIT_TREE: NodeSpec[] = [
     name: 'ETC',
     tone: 'violet',
     checked: false,
-    children: [
-      { id: 'etc-sr-shift', name: 'SR Shift', tone: 'violet', checked: false },
-      { id: 'etc-barcode', name: 'Barcode', tone: 'violet', checked: false },
-      { id: 'etc-user-mask', name: 'User Mask', tone: 'violet', checked: false },
-    ],
+    children: [{ id: 'etc-user-mask', name: 'User Mask', tone: 'violet', checked: false }],
   },
 ]
 
@@ -159,6 +161,7 @@ function toSpecNodes(nodes: NodeSpec[], prefix: 'u-' | 'd-'): SpecNode[] {
       tone: node.tone,
     }
     if (node.checked !== undefined) result.checked = node.checked
+    if (node.align) result.align = node.align
     if (node.children) result.children = toSpecNodes(node.children, prefix)
     return result
   })
@@ -177,5 +180,11 @@ export function createTeachSnapshot(): TeachSnapshot {
   return {
     unit: toSpecSet(UNIT_TREE, 'u-'),
     dummy: toSpecSet(DUMMY_TREE, 'd-'),
+    // The pictures are crops of the reference design: the baked corner marks of Metal and DMG stay.
+    alignImages: {
+      metal: { url: alignMetal, width: 781, height: 536 },
+      sr: { url: alignSr, width: 781, height: 536 },
+      dmg: { url: alignDmg, width: 781, height: 536 },
+    },
   }
 }

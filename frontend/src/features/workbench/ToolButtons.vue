@@ -38,7 +38,7 @@ const channels: ChannelDef[] = [
         :key="def.id"
         :label="def.label"
         :selected="store.tool === def.id"
-        :disabled="def.disabled"
+        :disabled="def.disabled || store.toolsLocked"
         :style="{ left: `${toolbarLeft(toolbarX.tools[i])}px` }"
         @click="store.toggleTool(def.id)"
       >

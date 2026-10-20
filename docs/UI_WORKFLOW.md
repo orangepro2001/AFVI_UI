@@ -6,11 +6,11 @@
 
 - 设计图是 **约 1778×929 的窗口截图**，所以设计基准视口是 **1778×929**（`scripts/snap.sh --size 1778x929`）。Wails 窗口以 `Maximised` 启动，1920×1080 下视口更大，多出的空间由主区域伸缩吸收；外壳尺寸与字号不变。
 - 布局按像素写：页头 58px、页签行 56px、左侧图标栏 57px、右侧栏 503px、面板之间 5px 缝（`theme.css` 里的 `--spacing-*`）。窗口最小 1280×720。
-- 每一页的尺寸、坐标、数据都写在 `design/spec/`（`00-frame.md` 外壳与日志、`10-home.md`、`20-workbench.md` 工作台公共部分、`30-teach.md`、`40-panels.md` REVIEW/CALIBRATE/SETTINGS）。**改界面先读对应的 spec，量出新数值后同步改 spec。**
+- 每一页的尺寸、坐标、数据都写在 `design/spec/`（`00-frame.md` 外壳与日志、`10-home.md`、`20-workbench.md` 工作台公共部分、`30-teach.md`、`40-panels.md` REVIEW/CALIBRATE/SETTINGS、`50-teach-nodes.md` 选中节点后的 TEACH、`60-login.md` 登录对话框）。**改界面先读对应的 spec，量出新数值后同步改 spec。**
 
 ## 1. 设计图与截图偏移
 
-设计图在 `design/reference/`，入库：`home.png`、`teach.png`、`review.png`、`calibrate.png`、`settings.png`，加两张工具栏局部图 `top-toolbar-gv.png`、`top-toolbar-ruler.png`，以及 TEACH 右栏的两张局部图 `right-block-1.png`（Unit）、`right-block-2.png`（Dummy）。
+设计图在 `design/reference/`，入库：`home.png`、`teach.png`、`review.png`、`calibrate.png`、`settings.png`，加两张工具栏局部图 `top-toolbar-gv.png`、`top-toolbar-ruler.png`，以及 TEACH 右栏的两张局部图 `right-block-1.png`（Unit）、`right-block-2.png`（Dummy），选中节点的几组图（`right-block-AlignROI-*`、`right-block-NonMetal*`）和登录对话框（`left-block-menu-login*`）。
 
 这些图是人手截的，顶部多裁了几个像素，所以每张图要平移才与基准重合。下表是“图中坐标 − 设计坐标”：
 
@@ -22,7 +22,14 @@
 | top-toolbar-ruler.png | 0 | 1 |
 | top-toolbar-gv.png | 2 | 6 |
 | review.png（底部带 Windows 任务栏，忽略） | 0 | 8 |
+| right-block-AlignROI-Metal.png | 5 | 6 |
+| right-block-AlignROI-SR.png | 3 | 4 |
+| right-block-AlignROI-DMG.png | 2 | 7 |
+| left-block-menu-login[no.2 icon].png | 3 | 2 |
 
+后四张整窗图的客户区约 1778×925，所以截图要写 `scripts/snap.sh --route /teach --size 1778x925`；右栏局部图（AU~OSP、NonMetal、User Mask）是裁剪图，偏移含义见 `design/spec/50-teach-nodes.md`。
+
+页面里要进入某个参考状态（选中节点、对话框打开、指针在图上…）用开发预设，不用点：`?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>`、`?pointer=x,y`、`?dialog=login`、`?scroll=bottom|<px>`（参考图的树滚动了 108px）、`?tool=gv|ruler`、`?spec=dummy`，定义在 `frontend/src/dev/preset.ts`，只在 `import.meta.env.DEV` 下生效。
 spec 里的坐标已经是设计坐标（`y_设计 = y_图 − dy`）。量颜色和尺寸时用图中坐标，再换算。
 
 ## 2. 起开发服务器并截图
@@ -103,6 +110,8 @@ go run scripts/crop.go design/reference/home.png /tmp/x.png 1271 118 507 807 2  
 ```
 
 区域模式会列出占比最高的三种颜色，面板底色是占比最高的那个，抗锯齿边缘不会干扰。文字颜色用 `textcolor.go`；用 `runs.go` 量边：一条水平线上从 #36353a 变成 #ffc910 的那个像素就是芯片的左边缘。把得到的十六进制值填进 `frontend/src/styles/themes/afvi-dark.css` 对应令牌（令牌名按用途命名，不按颜色命名），注释里写上取样位置。
+
+图标不是 lucide 能近似的时候（查看器工具列的 20 个字形），用 `scripts/icontrace.go` 从设计图里描出轮廓，生成 `frontend/src/features/workbench/tool-glyphs.ts`，不要手改生成物。
 
 没有 Go 也可以：在浏览器里打开 `http://localhost:5173/__design/reference/home.png`，用 DevTools 的取色器点像素，或者用 Windows PowerToys 的 Color Picker。
 

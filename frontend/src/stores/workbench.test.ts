@@ -64,4 +64,29 @@ describe('workbench store', () => {
     expect(store.readout!.xy).toEqual({ x: 8192, y: 6040 })
     expect(store.readout!.strip.x - store.readout!.xy.x).toBe(14670)
   })
+
+  it('starts without a pointer and with the tools unlocked', () => {
+    const store = storeWith()
+    expect(store.pointerSeen).toBe(false)
+    expect(store.toolsLocked).toBe(false)
+  })
+
+  it('keeps the strip RGB when pointing without a picture', async () => {
+    const store = storeWith()
+    await store.load()
+
+    store.pointAt(10, 10)
+    expect(store.pointerSeen).toBe(true)
+    expect(store.readout!.rgb).toEqual([31, 31, 31])
+  })
+
+  it('zeroes the RGB and scales XY when pointing at another picture', async () => {
+    const store = storeWith()
+    await store.load()
+
+    store.pointAt(100, 50, { url: 'x.png', width: 781, height: 536 })
+    expect(store.readout!.rgb).toEqual([0, 0, 0])
+    expect(store.readout!.xy.x).toBe(Math.round((100 * 16384) / 781))
+    expect(store.readout!.xy.y).toBe(Math.round((50 * 12080) / 536))
+  })
 })

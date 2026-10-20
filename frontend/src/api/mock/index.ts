@@ -1,8 +1,10 @@
 import type { ApiClient } from '../client'
 import type { LogEntry, SystemStats } from '../types'
+import { createNodeAnalysis } from './analysis'
 import { createCalibrationSnapshot } from './calibration'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
 import { createDefects } from './review'
+import { createSession } from './session'
 import { createSettingsSnapshot } from './settings'
 import { createTeachSnapshot } from './teach'
 import { createWorkbenchSnapshot } from './workbench'
@@ -69,6 +71,14 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
 
     async getTeach() {
       return createTeachSnapshot()
+    },
+
+    async getNodeAnalysis(nodeId) {
+      return createNodeAnalysis(nodeId)
+    },
+
+    async getSession() {
+      return createSession()
     },
 
     async getDefects() {

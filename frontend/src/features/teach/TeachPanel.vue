@@ -24,12 +24,18 @@ const spec = computed(() =>
     />
     <!-- Specification: x 1275..1488, y 197..925 -->
     <div class="absolute top-[79px] bottom-0 left-[4px] w-[214px] bg-muted">
-      <SpecAlign :spec="spec" @toggle-overlay="teach.toggleOverlay" />
+      <SpecAlign
+        :spec="spec"
+        :enabled="teach.overlayEnabled"
+        @toggle-overlay="teach.toggleOverlay"
+      />
       <SpecTree
         class="absolute top-[152px] bottom-[3px] left-0 h-auto w-[214px]"
         :nodes="spec.tree"
         :checked="teach.checked"
+        :selected-id="teach.selectedId"
         @toggle="teach.toggleChecked"
+        @select="teach.select"
       />
     </div>
     <!-- Image Analysis: x 1492..1771 -->
@@ -37,8 +43,9 @@ const spec = computed(() =>
       class="absolute top-[79px] bottom-0 left-[221px] h-auto"
       :light="teach.light"
       :channel="teach.channel"
-      :rows="[]"
+      :tables="teach.tables"
       @update:channel="teach.channel = $event"
+      @toggle="teach.toggleAnalysisRow"
     />
   </div>
 </template>

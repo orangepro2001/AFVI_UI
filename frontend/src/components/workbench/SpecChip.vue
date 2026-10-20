@@ -7,9 +7,10 @@ const props = withDefaults(
   defineProps<{
     label: string
     tone: SpecTone
+    selected?: boolean
     class?: HTMLAttributes['class']
   }>(),
-  { class: undefined },
+  { selected: false, class: undefined },
 )
 
 const toneClass: Record<SpecTone, string> = {
@@ -22,14 +23,17 @@ const toneClass: Record<SpecTone, string> = {
 </script>
 
 <template>
-  <span
+  <button
+    type="button"
+    :aria-pressed="props.selected"
     :class="
       cn(
-        'flex h-[18px] items-center truncate pl-[5px] text-3xs font-bold',
-        toneClass[props.tone],
+        'flex h-[18px] cursor-pointer items-center truncate pl-[5px] text-left text-3xs font-bold',
+        props.selected ? 'bg-spec-selected text-tab-foreground' : toneClass[props.tone],
         props.class,
       )
     "
-    >{{ label }}</span
   >
+    {{ label }}
+  </button>
 </template>

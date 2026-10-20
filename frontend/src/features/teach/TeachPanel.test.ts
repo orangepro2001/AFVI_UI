@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createApp } from 'vue'
 import { describe, expect, it } from 'vitest'
@@ -60,5 +60,28 @@ describe('TeachPanel', () => {
     const wrapper = await mountPanel()
     await wrapper.vm.$nextTick()
     expect(wrapper.findAll('[role="checkbox"]').length).toBeGreaterThanOrEqual(10)
+  })
+
+  it('selects a node and fills the analysis tables', async () => {
+    const wrapper = await mountPanel()
+    await wrapper.vm.$nextTick()
+
+    const store = useTeachStore()
+    const chips = () => wrapper.findAll('button[aria-pressed]')
+    const metal = chips().find((chip) => chip.text() === 'Metal')
+    expect(metal).toBeDefined()
+    await metal!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(store.selectedId).toBe('u-metal')
+    expect(metal!.attributes('aria-pressed')).toBe('true')
+
+    const cpad = chips().find((chip) => chip.text() === 'C-Pad')
+    expect(cpad).toBeDefined()
+    await cpad!.trigger('click')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const rows = wrapper.findAll('[data-table="upper"] [data-row]')
+    expect(rows).toHaveLength(9)
   })
 })

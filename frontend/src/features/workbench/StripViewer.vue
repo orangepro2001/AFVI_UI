@@ -2,12 +2,16 @@
 import { ref } from 'vue'
 import { cn } from 'cn'
 import type { HTMLAttributes } from 'vue'
-import type { WorkbenchSnapshot } from '@/api/types'
+import type { ImageRef } from '@/api/types'
 
-const props = defineProps<{
-  image: WorkbenchSnapshot['image']
-  class?: HTMLAttributes['class']
-}>()
+const props = withDefaults(
+  defineProps<{
+    image: ImageRef | null
+    top?: number
+    class?: HTMLAttributes['class']
+  }>(),
+  { top: 15, class: undefined },
+)
 
 const emit = defineEmits<{
   pointer: [x: number, y: number]
@@ -17,8 +21,8 @@ const imageEl = ref<HTMLImageElement | null>(null)
 
 // Centred in the viewer, 2px to the left as in the reference design (the viewer is 1056px wide there).
 const imageStyle = () => ({
-  left: `calc(50% - ${props.image.width / 2 + 2}px)`,
-  top: '15px',
+  left: `calc(50% - ${(props.image?.width ?? 0) / 2 + 2}px)`,
+  top: `${props.top}px`,
 })
 
 function onPointerMove(event: PointerEvent) {
@@ -37,21 +41,23 @@ function onPointerMove(event: PointerEvent) {
     :class="cn('relative min-w-0 flex-1 overflow-hidden bg-muted', $props.class)"
     @pointermove="onPointerMove"
   >
-    <img
-      ref="imageEl"
-      :src="image.url"
-      :width="image.width"
-      :height="image.height"
-      class="absolute max-w-none"
-      :style="imageStyle()"
-      draggable="false"
-    />
-    <div
-      class="absolute"
-      :style="{ ...imageStyle(), width: `${image.width}px`, height: `${image.height}px` }"
-    >
-      <slot name="overlay" />
-    </div>
+    <template v-if="image">
+      <img
+        ref="imageEl"
+        :src="image.url"
+        :width="image.width"
+        :height="image.height"
+        class="absolute max-w-none"
+        :style="imageStyle()"
+        draggable="false"
+      />
+      <div
+        class="absolute"
+        :style="{ ...imageStyle(), width: `${image.width}px`, height: `${image.height}px` }"
+      >
+        <slot name="overlay" />
+      </div>
+    </template>
     <slot name="tools" />
   </div>
 </template>

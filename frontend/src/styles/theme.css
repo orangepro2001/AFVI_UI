@@ -141,6 +141,23 @@
   --color-spec-silver: var(--spec-silver);
   --color-spec-violet: var(--spec-violet);
   --color-spec-line: var(--spec-line);
+  --color-spec-selected: var(--spec-selected);
+
+  --color-analysis-green: var(--analysis-green);
+  --color-analysis-yellow: var(--analysis-yellow);
+  --color-analysis-plain: var(--analysis-plain);
+  --color-analysis-value: var(--analysis-value);
+  --color-analysis-no: var(--analysis-no);
+  --color-switch-off: var(--switch-off);
+  --color-switch-off-knob: var(--switch-off-knob);
+
+  --color-dialog-veil: var(--dialog-veil);
+  --color-dialog-border: var(--dialog-border);
+  --color-dialog-title: var(--dialog-title);
+  --color-dialog-field: var(--dialog-field);
+  --color-dialog-form: var(--dialog-form);
+  --color-dialog-line: var(--dialog-line);
+  --color-dialog-line-dim: var(--dialog-line-dim);
 
   --color-switch-on: var(--switch-on);
   --color-slider-track: var(--slider-track);

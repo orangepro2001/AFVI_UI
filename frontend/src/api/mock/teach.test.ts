@@ -61,4 +61,49 @@ describe('createTeachSnapshot', () => {
     expect(first).not.toBe(second)
     expect(first.unit.tree).not.toBe(second.unit.tree)
   })
+
+  it('gives Unit NonMetal nine items, Unit ETC one and keeps the Dummy tree', () => {
+    const { unit, dummy } = createTeachSnapshot()
+
+    const nonMetal = flatten(unit.tree).find((node) => node.id === 'u-nonmetal')
+    expect(nonMetal?.children?.map((child) => child.name)).toEqual([
+      'SR All',
+      'Pattern1',
+      'PatternThick',
+      'Space1',
+      'SpaceThick',
+      'Open1',
+      'EtchBack',
+      'VIA',
+      'Laser Marking',
+    ])
+
+    const unitEtc = flatten(unit.tree).find((node) => node.id === 'u-etc')
+    expect(unitEtc?.children?.map((child) => child.name)).toEqual(['User Mask'])
+
+    const dummyEtc = flatten(dummy.tree).find((node) => node.id === 'd-etc')
+    expect(dummyEtc?.children).toHaveLength(3)
+  })
+
+  it('sets the align kind on Metal, SR and DMG and ships their pictures', () => {
+    const snapshot = createTeachSnapshot()
+    const nodes = flatten(snapshot.unit.tree)
+    const alignOf = (id: string) => nodes.find((node) => node.id === id)?.align
+
+    expect(alignOf('u-metal')).toBe('metal')
+    expect(alignOf('u-sr')).toBe('sr')
+    expect(alignOf('u-dmg')).toBe('dmg')
+    expect(nodes.filter((node) => node.align !== undefined).map((node) => node.id)).toEqual([
+      'u-metal',
+      'u-sr',
+      'u-dmg',
+    ])
+
+    expect(Object.keys(snapshot.alignImages).sort()).toEqual(['dmg', 'metal', 'sr'])
+    for (const image of Object.values(snapshot.alignImages)) {
+      expect(image.width).toBe(781)
+      expect(image.height).toBe(536)
+      expect(image.url).toBeTruthy()
+    }
+  })
 })

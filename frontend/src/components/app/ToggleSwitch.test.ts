@@ -23,6 +23,25 @@ describe('ToggleSwitch', () => {
     expect(mount(ToggleSwitch, { props: { modelValue: true, variant: 'small' } }).text()).toBe('')
   })
 
+  it('draws the table variant with its own size and colours', () => {
+    const on = mount(ToggleSwitch, { props: { modelValue: true, variant: 'table' } })
+    const off = mount(ToggleSwitch, { props: { modelValue: false, variant: 'table' } })
+
+    expect(on.classes()).toContain('h-[14px]')
+    expect(on.classes()).toContain('w-[31px]')
+    expect(on.classes()).toContain('bg-primary')
+    expect(on.find('span').classes()).toContain('bg-white')
+    expect(on.find('span').classes()).toContain('right-[4px]')
+    expect(on.find('span').classes()).toContain('top-[3px]')
+
+    expect(off.classes()).toContain('h-[14px]')
+    expect(off.classes()).toContain('w-[31px]')
+    expect(off.classes()).toContain('bg-switch-off')
+    expect(off.find('span').classes()).toContain('bg-switch-off-knob')
+    expect(off.find('span').classes()).toContain('left-[4px]')
+    expect(off.find('span').classes()).toContain('top-[3px]')
+  })
+
   it('does not react while disabled', async () => {
     const wrapper = mount(ToggleSwitch, { props: { modelValue: false, disabled: true } })
     await wrapper.trigger('click')

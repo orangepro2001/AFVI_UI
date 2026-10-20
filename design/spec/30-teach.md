@@ -45,6 +45,8 @@ Unit/Dummy 切换规格树内容（`TeachSnapshot.unit/dummy`）。
 
 ## 查看器里的叠加物（teach 页，来自 top-toolbar-gv.png / top-toolbar-ruler.png）
 
+> 注：工具面板的最终几何（78px 底条、30×30 按钮、20 个描出来的字形、只在 GV 工具选中或选中 Align 节点时显示）见 [50-teach-nodes.md](50-teach-nodes.md)，下面一节是早期在窄窗口下量的，仅作背景。
+
 **工具面板** `components/workbench/ViewerTools.vue`：查看器右侧，x 1197..1262（相对查看器右缘内缩约 4px），按钮 33×33、圆角 8px、2px 边框（`tool-disabled`，选中 `tool-active`，可用的 `tool-border`），两列（x 中心 1211 与 1249），行（设计 y，gv 图 dy=6 已减）：
 - y 186：单个按钮（选择/移动：lucide `MousePointer2`），仅一列（x 1211），可用（`tool-border`）。
 - y 249：[实心矩形（选中，青色填充）][实心矩形（灰）]；y 286：[实心圆][圆+刷]；y 323：[圆形涂抹][多边形涂抹]（图标用 lucide：`Square`/`Circle`/`Lasso` 等，禁用态 `tool-disabled`；选中项 `tool-active`）。

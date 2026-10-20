@@ -1,17 +1,59 @@
 import type { App } from 'vue'
+import { useAppStore } from '@/stores/app'
 import { useTeachStore } from '@/stores/teach'
 import { useWorkbenchStore, type ToolId } from '@/stores/workbench'
 
 const tools: ToolId[] = ['ruler', 'gv']
 
+/** ?node=<alias> picks a node of the Unit tree; any other value is taken as a node id. */
+const nodes: Record<string, string> = {
+  metal: 'u-metal',
+  sr: 'u-sr',
+  dmg: 'u-dmg',
+  pad: 'u-au-cpad',
+  nonmetal: 'u-nonmetal-sr-all',
+  'user-mask': 'u-etc-user-mask',
+}
+
 /**
- * Puts the application into a state a reference image shows (?tool=gv, ?spec=dummy), so that a
- * design overlay can be compared without clicking. Only imported under import.meta.env.DEV (main.ts).
+ * Puts the application into a state a reference image shows, so that a design overlay can be
+ * compared without clicking. Only imported under import.meta.env.DEV (main.ts).
+ *
+ *   ?tool=gv|ruler     toolbar tool
+ *   ?spec=dummy        Dummy tab of the specification
+ *   ?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>   selected node of the tree
+ *   ?pointer=x,y       the pointer has been over the picture: XY of the read-out bar
+ *   ?dialog=login      the "Log in/out" dialog
+ *   ?scroll=bottom|<px>   the specification tree scrolled to its end, or by that many pixels
  */
 export function applyPreset(params: URLSearchParams, app: App): void {
   const tool = tools.find((id) => id === params.get('tool'))
+  const node = params.get('node')
+  const pointer = params.get('pointer')?.split(',').map(Number)
+
   app.runWithContext(() => {
     if (tool) useWorkbenchStore().toggleTool(tool)
     if (params.get('spec') === 'dummy') useTeachStore().mode = 'dummy'
+    if (node) useTeachStore().select(nodes[node] ?? node)
+    if (pointer && pointer.length === 2 && pointer.every(Number.isFinite)) {
+      const workbench = useWorkbenchStore()
+      void workbench.load().then(() => {
+        workbench.setReadout({ xy: { x: pointer[0]!, y: pointer[1]! }, rgb: [0, 0, 0] })
+        workbench.pointerSeen = true
+      })
+    }
+    if (params.get('dialog') === 'login') useAppStore().loginOpen = true
   })
+
+  const scroll = params.get('scroll')
+  if (scroll === 'bottom' || (scroll !== null && Number.isFinite(Number(scroll)))) {
+    // The tree exists once the TEACH page has loaded its snapshot: wait for it to show up.
+    const timer = setInterval(() => {
+      const scroller = document.querySelector<HTMLElement>('[data-spec-scroller]')
+      if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return
+      scroller.scrollTop = scroll === 'bottom' ? scroller.scrollHeight : Number(scroll)
+      clearInterval(timer)
+    }, 100)
+    setTimeout(() => clearInterval(timer), 5000)
+  }
 }

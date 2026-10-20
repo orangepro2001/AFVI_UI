@@ -169,12 +169,17 @@ export interface WorkbenchSnapshot {
 /** The colour family of a chip in the specification tree (theme tokens --spec-*). */
 export type SpecTone = 'root' | 'gold' | 'green' | 'silver' | 'violet'
 
+/** The three Align / ROI nodes that own a picture of the strip: Metal, SR and DMG. */
+export type AlignKind = 'metal' | 'sr' | 'dmg'
+
 export interface SpecNode {
   id: string
   name: string
   tone: SpecTone
   /** undefined: the node has no checkbox. */
   checked?: boolean
+  /** Set on the nodes whose selection puts that align picture into the viewer. */
+  align?: AlignKind
   children?: SpecNode[]
 }
 
@@ -190,17 +195,69 @@ export interface SpecSet {
   tree: SpecNode[]
 }
 
+/** The colour of a row name in the analysis tables (theme tokens --analysis-name-*). */
+export type AnalysisTone = 'green' | 'yellow' | 'plain'
+
+/** The Red / Green / Blue tabs above the channel table. */
+export type AnalysisChannelId = 'red' | 'green' | 'blue'
+
 /** One row of the analysis tables ("No.", "Name", "Value", and "Min" in the channel table). */
 export interface AnalysisRow {
   no: number
   name: string
-  value: string
+  /** boolean: shown as a switch; string: the number the way the machine prints it ("-2.000"). */
+  value: string | boolean
+  /** Only the channel table has this column. */
   min?: string
+  /** Colour of the name; plain when omitted. */
+  tone?: AnalysisTone
+}
+
+/** What the three tables of Image Analysis show for one light tab. */
+export interface LightAnalysis {
+  /** The first table, under the Light tabs. */
+  upper: AnalysisRow[]
+  /** The second table. */
+  lower: AnalysisRow[]
+  /** The third table, one list per Red / Green / Blue tab. */
+  channels: Record<AnalysisChannelId, AnalysisRow[]>
+}
+
+/** The analysis of one node of the specification tree, by Light tab. */
+export type NodeAnalysis = Record<1 | 2 | 3, LightAnalysis>
+
+export interface ImageRef {
+  url: string
+  width: number
+  height: number
 }
 
 export interface TeachSnapshot {
   unit: SpecSet
   dummy: SpecSet
+  /** The pictures of the Align / ROI nodes. */
+  alignImages: Record<AlignKind, ImageRef>
+}
+
+// --- Session ---------------------------------------------------------------------------------
+
+export interface UserAccount {
+  /** "01" */
+  index: string
+  name: string
+  /** "Master" */
+  level: string
+  /** "Login" */
+  state: string
+}
+
+/** Who is signed in, and the accounts the "Log in/out" dialog lists. */
+export interface SessionInfo {
+  /** The name of the account that is logged in. */
+  current: string
+  /** "2026-10-20 16:35:23" */
+  since: string
+  users: UserAccount[]
 }
 
 // --- REVIEW, CALIBRATE, SETTINGS -------------------------------------------------------------
