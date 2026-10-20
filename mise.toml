@@ -1,0 +1,6 @@
+# Tool versions for `mise install` (https://mise.jdx.dev). Node is not listed: pnpm installs the
+# Node pinned in frontend/package.json (devEngines.runtime). The Tailwind CSS executable comes from
+# scripts/tools.sh, pinned with a checksum in scripts/tools.env.
+[tools]
+go = "1.27"
+pnpm = "12.14.0"

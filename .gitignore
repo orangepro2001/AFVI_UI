@@ -1,0 +1,27 @@
+# Build outputs
+build/bin/
+/dist/
+
+# Tools fetched by scripts/tools.sh (Tailwind CSS executable, pnpm on the build server)
+/.tools/
+
+# Frontend (the same rules apply in frontend/.gitignore)
+node_modules/
+
+# Design material: the reference images are committed, the screenshots of scripts/snap.sh are not
+design/snap/
+
+# Windows binaries and test binaries
+*.exe
+*.test
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

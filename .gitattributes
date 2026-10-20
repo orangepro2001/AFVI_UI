@@ -1,0 +1,10 @@
+# One line ending everywhere: the project is built on Linux (WSL2, the build server) and edited
+# from Windows too. Shell scripts and the generated Wails bindings must stay LF.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.exe binary

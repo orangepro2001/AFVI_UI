@@ -1,0 +1,160 @@
+/*
+ * What Tailwind knows about the design: the utilities that exist (bg-card, text-label, h-header,
+ * text-xs ...). Pages and components use these and never write a raw colour or a magic size.
+ *
+ *   themes/*.css  the colour VALUES (swapped per theme)
+ *   theme.css     this file: NAMES of colours (var(--x)) and the design constants that do not
+ *                 change between themes (type scale, fonts, layout sizes)
+ */
+
+/* shadcn-vue's `dark:` variant: the app is dark, <html class="dark"> is set in index.html. */
+@custom-variant dark (&:is(.dark *));
+
+/* Design constants. Pixel values on purpose: the design is a fixed 1920x1080 maximised window. */
+@theme {
+  /* The palette is closed: nothing but the tokens below (and white/black) exists as a colour. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --font-sans: 'Segoe UI', 'Malgun Gothic', 'Microsoft YaHei UI', system-ui, sans-serif;
+  --font-mono: Consolas, 'Cascadia Mono', ui-monospace, monospace;
+
+  /* Type scale of the design. */
+  --text-*: initial;
+  --text-3xs: 10px;
+  --text-3xs--line-height: 13px;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 14px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 18px;
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+  --text-md: 16px;
+  --text-md--line-height: 22px;
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+  --text-xl: 20px;
+  --text-xl--line-height: 26px;
+
+  /* Layout of the application shell (layouts/AppShell.vue), measured on the 1778x929 reference. */
+  --spacing-header: 58px;
+  --spacing-nav: 56px;
+  --spacing-rail: 57px;
+  --spacing-aside: 503px;
+  --spacing-gap: 5px; /* the gap between panels */
+}
+
+/* Colour names. `inline` makes the utilities read the variable at use site, which is what lets
+   [data-theme] switch the value without regenerating CSS. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-header: var(--header);
+  --color-nav: var(--nav);
+  --color-rail: var(--rail);
+  --color-ready: var(--ready);
+  --color-ready-foreground: var(--ready-foreground);
+  --color-title: var(--title);
+  --color-label: var(--label);
+  --color-value: var(--value);
+  --color-positive: var(--positive);
+  --color-icon-accent: var(--icon-accent);
+  --color-subtle: var(--subtle);
+  --color-notice: var(--notice);
+
+  --color-grid: var(--grid);
+  --color-grid-head: var(--grid-head);
+  --color-grid-row: var(--grid-row);
+  --color-log: var(--log);
+  --color-log-info: var(--log-info);
+  --color-sheet-head: var(--sheet-head);
+  --color-sheet-row: var(--sheet-row);
+  --color-sheet-muted: var(--sheet-muted);
+  --color-sheet-line: var(--sheet-line);
+
+  --color-work-none: var(--work-none);
+  --color-work-work: var(--work-work);
+  --color-work-error: var(--work-error);
+  --color-work-complete: var(--work-complete);
+
+  --color-light-red: var(--light-red);
+  --color-light-green: var(--light-green);
+  --color-light-blue: var(--light-blue);
+  --color-group-dmg: var(--group-dmg);
+
+  --color-kind-bright: var(--kind-bright);
+  --color-kind-dark: var(--kind-dark);
+  --color-kind-chain: var(--kind-chain);
+  --color-kind-skeleton: var(--kind-skeleton);
+  --color-kind-barcode: var(--kind-barcode);
+  --color-kind-sr-shift: var(--kind-sr-shift);
+
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-line: var(--chart-line);
+  --color-chart-send: var(--chart-send);
+  --color-chart-area: var(--chart-area);
+  --color-gauge-used: var(--gauge-used);
+  --color-gauge-rest: var(--gauge-rest);
+
+  --color-tool-border: var(--tool-border);
+  --color-tool-disabled: var(--tool-disabled);
+  --color-tool-icon: var(--tool-icon);
+  --color-tool-active: var(--tool-active);
+  --color-tool-active-dim: var(--tool-active-dim);
+  --color-tool-yellow: var(--tool-yellow);
+  --color-tool-red: var(--tool-red);
+  --color-tool-green: var(--tool-green);
+  --color-tool-blue: var(--tool-blue);
+
+  --color-tab-spec: var(--tab-spec);
+  --color-tab-analysis: var(--tab-analysis);
+  --color-tab-unit: var(--tab-unit);
+  --color-tab-dummy: var(--tab-dummy);
+  --color-tab-light: var(--tab-light);
+  --color-tab-light-active: var(--tab-light-active);
+  --color-tab-channel-red: var(--tab-channel-red);
+  --color-tab-channel: var(--tab-channel);
+  --color-tab-foreground: var(--tab-foreground);
+  --color-spec-root: var(--spec-root);
+  --color-spec-gold: var(--spec-gold);
+  --color-spec-green: var(--spec-green);
+  --color-spec-silver: var(--spec-silver);
+  --color-spec-violet: var(--spec-violet);
+  --color-spec-line: var(--spec-line);
+
+  --color-switch-on: var(--switch-on);
+  --color-slider-track: var(--slider-track);
+  --color-mask-low: var(--mask-low);
+  --color-mask-high: var(--mask-high);
+  --color-mask-thumb: var(--mask-thumb);
+  --color-overlay-line: var(--overlay-line);
+  --color-overlay-handle: var(--overlay-handle);
+  --color-overlay-text: var(--overlay-text);
+  --color-overlay-measure: var(--overlay-measure);
+
+  /* shadcn-vue rounds with sm/md/lg/xl; the design is nearly square. */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+}

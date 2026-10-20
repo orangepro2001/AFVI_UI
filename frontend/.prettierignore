@@ -1,0 +1,6 @@
+dist/
+wailsjs/
+pnpm-lock.yaml
+src/styles/generated.css
+# Added by scripts/ui-add.sh (shadcn-vue); kept as the CLI writes them.
+src/components/ui/

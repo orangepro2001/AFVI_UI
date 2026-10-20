@@ -1,0 +1,7 @@
+node_modules/
+dist/*
+!dist/.gitkeep
+# Tailwind output, written by tools/vite-plugin-tailwind-cli.ts
+src/styles/generated.css
+*.tsbuildinfo
+package.json.md5

@@ -1,0 +1,18 @@
+/*
+ * Tailwind entry. The Tailwind CSS standalone executable compiles this file into generated.css
+ * (git-ignored), which main.ts imports. tools/vite-plugin-tailwind-cli.ts runs it with
+ * `vite` / `vite build`; scripts/tools.sh installs the executable.
+ *
+ *   themes/<name>.css   colour values (one file per theme)
+ *   theme.css           names of colours + design constants -> Tailwind utilities
+ *   base.css            element defaults
+ */
+@import 'tailwindcss' source(none);
+@import 'tw-animate-css';
+@import './themes/afvi-dark.css';
+@import './theme.css';
+@import './base.css';
+
+/* Class names are read from these files only: explicit, so the result never depends on .gitignore. */
+@source "../../index.html";
+@source "../**/*.{vue,ts}";

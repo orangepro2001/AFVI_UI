@@ -1,0 +1,52 @@
+/* Element defaults of the desktop shell. Component styling belongs in the components. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #app {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans text-xs antialiased;
+    margin: 0;
+    /* A desktop application: the window never scrolls and text is not selectable... */
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ...except where people copy from. */
+  input,
+  textarea,
+  [data-selectable] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  button {
+    @apply cursor-default;
+  }
+
+  /* Scrollbars of the application (WebView2 is Chromium). */
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--muted);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border: 2px solid var(--muted);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--muted);
+  }
+}

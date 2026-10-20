@@ -1,0 +1,22 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "AFVI-UI",
+  "outputfilename": "AFVI-UI",
+  "frontend:install": "pnpm install --frozen-lockfile",
+  "frontend:build": "pnpm build",
+  "frontend:dev:install": "pnpm install --frozen-lockfile",
+  "frontend:dev:build": "pnpm build",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "wailsjsdir": "./frontend",
+  "author": {
+    "name": "orangepro2001"
+  },
+  "info": {
+    "companyName": "AFVI",
+    "productName": "AFVI UI",
+    "productVersion": "0.0.0",
+    "copyright": "AFVI",
+    "comments": "Pixel Vision Inspection System UI"
+  }
+}

@@ -1,0 +1,18 @@
+# pnpm settings for this project (there is only this one package; the file just holds the settings).
+# See docs/PACKAGES.md for the reasoning.
+
+# Exact versions in package.json: what is written there is what gets installed.
+savePrefix: ''
+
+# Supply chain: refuse versions younger than 24 h (time for a malicious release to be pulled), and
+# refuse a version published with weaker provenance than an earlier one.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Old release (2022, no provenance) that shadcn-vue's CLI pulls in through @babel/core; the
+  # newer semver releases carry provenance, which trips the rule. Exact version, nothing broader.
+  - semver@6.3.1
+
+# Install scripts run only for packages listed here; anything else that wants one fails the install.
+allowBuilds: {}

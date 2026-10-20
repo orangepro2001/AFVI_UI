@@ -1,0 +1,129 @@
+/*
+ * Theme "afvi-dark": the values of every colour token. This is the only place raw colours live.
+ *
+ * A theme is a file with this exact set of variables under its own [data-theme="..."] selector
+ * (tests/theme-contract.test.ts fails when a theme lacks one). Which utilities exist for them
+ * (bg-card, text-label, ...) is decided in ../theme.css, not here.
+ *
+ * Sampled from design/reference/*.png with scripts/pixel.go (docs/UI_WORKFLOW.md, "Sampling
+ * colours"). Most of the application is one flat grey (#2d2d2f); the pastel tab colours are the
+ * original application's named colours (PaleVioletRed, MistyRose, CornflowerBlue, LightBlue,
+ * Lavender, MediumPurple, RosyBrown, Bisque, YellowGreen).
+ */
+:root,
+[data-theme='afvi-dark'] {
+  color-scheme: dark;
+
+  /* --- Base (the shadcn-vue names; components/ui reads these) ------------------------------- */
+  --background: #252527; /* behind everything: the gaps between panels */
+  --foreground: #e6e6e6;
+  --card: #2d2d2f; /* panels, header, tabs, rail */
+  --card-foreground: #e6e6e6;
+  --popover: #2d2d2f;
+  --popover-foreground: #e6e6e6;
+  --primary: #0079ca; /* the active page tab, switches, slider fill */
+  --primary-foreground: #ffffff;
+  --secondary: #575757; /* flat buttons such as "Clear" and "Revision" */
+  --secondary-foreground: #e6e6e6;
+  --muted: #36353a; /* inset surfaces: viewer, log, specification tree */
+  --muted-foreground: #8a8a8e;
+  --accent: #3a3a3f; /* hover */
+  --accent-foreground: #e6e6e6;
+  --destructive: #e33d2f;
+  --border: #4a4a4f;
+  --input: #4a4a4f;
+  --ring: #0079ca;
+  --radius: 2px;
+
+  /* --- Application chrome ------------------------------------------------------------------- */
+  --header: #2d2d2f; /* top bar with the product title */
+  --nav: #2d2d2f; /* page tabs */
+  --rail: #2d2d2f; /* left icon rail */
+  --ready: #9acd32; /* the status button and the lime bars of the info bar */
+  --ready-foreground: #ffffff;
+  --title: #2aa0cc; /* product title */
+  --label: #87ceeb; /* "MODEL :", "Send:", units */
+  --value: #d6f060; /* model and lot names */
+  --positive: #3fe03f; /* node names, enabled light */
+  --icon-accent: #5ebd5f; /* header icons */
+  --subtle: #727374; /* secondary header text */
+  --notice: #d1bb5c; /* notable log lines */
+
+  /* --- Data grids and consoles -------------------------------------------------------------- */
+  --grid: #4a4a4f; /* cell borders */
+  --grid-head: #1e1e1e; /* header rows of the home grids */
+  --grid-row: #2d2d2f; /* body rows of the home grids */
+  --log: #36353a;
+  --log-info: #dbdbd8;
+  --sheet-head: #363636; /* header rows of the tables in the right-hand panels */
+  --sheet-row: #303030; /* body rows and empty table areas of the right-hand panels */
+  --sheet-muted: #9fb0bf; /* "Light :", "Channel :", table headings */
+  --sheet-line: #484848; /* section captions such as "Global Align :" */
+
+  /* --- Work status (a strip's progress through the stations) --------------------------------- */
+  --work-none: #3a3a3d;
+  --work-work: #426ae0;
+  --work-error: #e01b1b;
+  --work-complete: #02ff03;
+
+  /* --- Light channels ------------------------------------------------------------------------ */
+  --light-red: #bf173a;
+  --light-green: #4caf4d;
+  --light-blue: #2a81e2;
+  --group-dmg: #0def0e; /* heading of the DMG light group */
+
+  /* --- Inspection kinds (legend of the inspection area) -------------------------------------- */
+  --kind-bright: #3cc83c;
+  --kind-dark: #2f8fff;
+  --kind-chain: #ff8c1a;
+  --kind-skeleton: #ffe01a;
+  --kind-barcode: #7ff0e8;
+  --kind-sr-shift: #e020e0;
+
+  /* --- Charts and gauges --------------------------------------------------------------------- */
+  --chart-grid: #656567;
+  --chart-line: #e4fd42; /* the filled line charts and the read-out values next to them */
+  --chart-send: #fdfd08; /* the network send graphs and their IP and rate */
+  --chart-area: #87ceeb;
+  --gauge-used: #e1ff41; /* the used part of the storage ring */
+  --gauge-rest: #0000ff;
+
+  /* --- Workbench toolbar (TEACH, REVIEW, CALIBRATE, SETTINGS) -------------------------------- */
+  --tool-border: #ababab; /* an enabled tool button */
+  --tool-disabled: #535255; /* a disabled tool button and its icon */
+  --tool-icon: #bfbfbf;
+  --tool-active: #01befd; /* the selected tool (border and fill) */
+  --tool-active-dim: #2b80a0;
+  --tool-yellow: #ffc814; /* lit bulb, yellow channel */
+  --tool-red: #e33d2f;
+  --tool-green: #3aa655;
+  --tool-blue: #2b9fd0;
+
+  /* --- Pastel tabs and spec tree (right-hand panels) ------------------------------------------ */
+  --tab-spec: #db7093; /* "Specification" */
+  --tab-analysis: #ffe4e1; /* "Image Analysis" */
+  --tab-unit: #6495ed;
+  --tab-dummy: #add8e6;
+  --tab-light: #e6e6fa; /* Light-1, Light-3 */
+  --tab-light-active: #9370db; /* Light-2 */
+  --tab-channel-red: #c13635;
+  --tab-channel: #ffe4c4; /* Green, Blue */
+  --tab-foreground: #1c1820; /* dark text on the pastel tabs and tree chips */
+  --spec-root: #bc8f8f; /* Align / ROI */
+  --spec-gold: #ffc910; /* AU, OSP, Drill and their items */
+  --spec-green: #00a000; /* NonMetal and its items */
+  --spec-silver: #c0c0c0; /* DMG */
+  --spec-violet: #6633fe; /* ETC and its items */
+  --spec-line: #8a8a8e; /* tree connector lines */
+
+  /* --- Calibration and settings controls ------------------------------------------------------ */
+  --switch-on: #72b824; /* the big ON/OFF switch of the calibration page */
+  --slider-track: #b4b4b4;
+  --mask-low: #a52a2a; /* left half of a morphic/sensitivity slider */
+  --mask-high: #2e8a57; /* right half */
+  --mask-thumb: #daa421;
+  --overlay-line: #ff0101; /* ROI rectangle in the viewer */
+  --overlay-handle: #88ceea;
+  --overlay-text: #30be31; /* GV and coordinate read-outs in the viewer */
+  --overlay-measure: #3698c9; /* distance read-out of the ruler */
+}
