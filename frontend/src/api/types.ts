@@ -317,3 +317,19 @@ export interface SettingsSnapshot {
   globalAlignLight: number
   globalAlignOptions: LightOption[]
 }
+
+// --- Models ----------------------------------------------------------------------------------
+
+/** One row of the "Choose Model Names" dialog. */
+export interface ModelEntry {
+  /** "01" */
+  index: string
+  /** "2026-05-04 11:28:12" */
+  created: string
+  /** "21csp043-09" */
+  name: string
+  /** Empty unless the model is loaded. */
+  state: string
+  /** "2.0" */
+  resolution: string
+}

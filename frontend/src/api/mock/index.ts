@@ -3,6 +3,7 @@ import type { LogEntry, SystemStats } from '../types'
 import { createNodeAnalysis } from './analysis'
 import { createCalibrationSnapshot } from './calibration'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
+import { createModels } from './models'
 import { createDefects } from './review'
 import { createSession } from './session'
 import { createSettingsSnapshot } from './settings'
@@ -79,6 +80,10 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
 
     async getSession() {
       return createSession()
+    },
+
+    async getModels() {
+      return createModels()
     },
 
     async getDefects() {

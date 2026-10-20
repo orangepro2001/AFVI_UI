@@ -140,6 +140,9 @@ interface ApiClient {
 | `ToggleSwitch` | 药丸开关，`variant` 为 `big`（校准页总开关）、`small`（表格行）、`mask`（设置页掩膜）；`role="switch"`，`v-model` |
 | `MaskSlider` | 0..1 的双色滑块（左红右绿、金色圆钮、数值与刻度），指针与键盘（±0.01、Home/End）可操作 |
 | `AppDialog` | Win32 风格的模态对话框壳（reka-ui Dialog）：40% 遮罩、2px 边框、18px 标题栏、固定 440×292；`[data-autofocus]` 的第一个元素在打开时拿到焦点 |
+| `PlainDialog` | 原生 Windows 外观的模态对话框壳（253×302，黑标题条，无遮罩变暗），Generate Option 用 |
+| `DialogButton` | 93×22 的对话框按钮，`primary` 是默认按钮（边框较亮），悬停变 `bg-dialog-button-hover` |
+| `LoadingOverlay` | 窗口级的透明加载遮罩：14 个圆点转圈加 “Please wait...”，由 `app.busy` 驱动 |
 | `LogConsole` | 日志控制台：跟随最新一行，操作员上滚去看旧日志时停止跟随；`notice` 级别的行用 `text-notice` |
 
 `components/charts`：`LineChart`（折线加面积，坐标计算在 `geometry.ts`）、`RingGauge`（环形仪表）。图表的颜色全部来自 `--chart-*`/`--gauge-*`。
@@ -161,4 +164,5 @@ interface ApiClient {
 - 单元测试放在被测文件旁边（`*.test.ts`），跨文件的契约放 `frontend/tests/`。
 - 组件测试用 `@vue/test-utils` + happy-dom（参见 `DataGrid.test.ts`）。
 - 选中节点相关：`stores/teach.ts` 的 `select(id)` 决定查看器模式（`strip` / `align` / `blank`）和分析表（`getNodeAnalysis`，失败时表清空）；`stores/workbench.ts` 的 `toolsLocked` 在非 `strip` 模式锁住工具栏，`pointerSeen` 控制 Align 读数栏是否出现。
+- 左侧 rail 的对话框（Login / Choose Model Names / Load grab images / Generate Option）和加载遮罩是**窗口级**的：挂在 `layouts/AppShell.vue`，状态在 `stores/app.ts`（`loginOpen`、`modelOpen`、`grabOpen`、`generateOpen`、`busy` 与 `runBusy(ms)`），任何页面点 rail 都会触发。新加 rail 动作：在 `AppShell.vue` 的 `onRailSelect` 里加一个 case，对话框放 `features/dialogs/`。
 - 模拟后端提供 `live: false` 选项，让数据停在种子上，测试结果稳定。

@@ -158,6 +158,22 @@
   --color-dialog-form: var(--dialog-form);
   --color-dialog-line: var(--dialog-line);
   --color-dialog-line-dim: var(--dialog-line-dim);
+  --color-dialog-button-hover: var(--dialog-button-hover);
+  --color-dialog-text-dim: var(--dialog-text-dim);
+  --color-dialog-list-body: var(--dialog-list-body);
+  --color-dialog-list-rule: var(--dialog-list-rule);
+  --color-dialog-scroll-track: var(--dialog-scroll-track);
+  --color-dialog-scroll-thumb: var(--dialog-scroll-thumb);
+
+  --color-plain-title: var(--plain-title);
+  --color-plain-title-text: var(--plain-title-text);
+  --color-plain-close: var(--plain-close);
+  --color-plain-body: var(--plain-body);
+  --color-plain-line: var(--plain-line);
+  --color-plain-text: var(--plain-text);
+
+  --color-busy-dot: var(--busy-dot);
+  --color-busy-text: var(--busy-text);
 
   --color-switch-on: var(--switch-on);
   --color-slider-track: var(--slider-track);

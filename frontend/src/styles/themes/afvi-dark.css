@@ -134,6 +134,24 @@
   --dialog-form: #303032; /* the form area under the user list */
   --dialog-line: #4e4e50; /* border of the default button */
   --dialog-line-dim: #3e3e40; /* border of the other buttons */
+  --dialog-button-hover: #575757; /* body of a hovered button */
+  --dialog-text-dim: #757675; /* label of a disabled button */
+  --dialog-list-body: #313131; /* rows of the model list (the header strips use sheet-head) */
+  --dialog-list-rule: #3d3d3d; /* line under the list title */
+  --dialog-scroll-track: #444444; /* track of the list's scroll bar */
+  --dialog-scroll-thumb: #312f30;
+
+  /* --- The plain (native Windows) dialog: Generate Option -------------------------------------- */
+  --plain-title: #0a0a0a; /* title bar */
+  --plain-title-text: #8f9493;
+  --plain-close: #797979;
+  --plain-body: #252525;
+  --plain-line: #535353; /* frame of a group box and border of the OK button */
+  --plain-text: #dfdfdf;
+
+  /* --- Loading overlay ------------------------------------------------------------------------ */
+  --busy-dot: #00abfd; /* the head of the turning ring; the trail is the same colour fading out */
+  --busy-text: #777777; /* "Please wait..." */
 
   /* --- Calibration and settings controls ------------------------------------------------------ */
   --switch-on: #72b824; /* the big ON/OFF switch of the calibration page */

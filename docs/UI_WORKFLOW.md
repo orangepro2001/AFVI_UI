@@ -6,7 +6,7 @@
 
 - 设计图是 **约 1778×929 的窗口截图**，所以设计基准视口是 **1778×929**（`scripts/snap.sh --size 1778x929`）。Wails 窗口以 `Maximised` 启动，1920×1080 下视口更大，多出的空间由主区域伸缩吸收；外壳尺寸与字号不变。
 - 布局按像素写：页头 58px、页签行 56px、左侧图标栏 57px、右侧栏 503px、面板之间 5px 缝（`theme.css` 里的 `--spacing-*`）。窗口最小 1280×720。
-- 每一页的尺寸、坐标、数据都写在 `design/spec/`（`00-frame.md` 外壳与日志、`10-home.md`、`20-workbench.md` 工作台公共部分、`30-teach.md`、`40-panels.md` REVIEW/CALIBRATE/SETTINGS、`50-teach-nodes.md` 选中节点后的 TEACH、`60-login.md` 登录对话框）。**改界面先读对应的 spec，量出新数值后同步改 spec。**
+- 每一页的尺寸、坐标、数据都写在 `design/spec/`（`00-frame.md` 外壳与日志、`10-home.md`、`20-workbench.md` 工作台公共部分、`30-teach.md`、`40-panels.md` REVIEW/CALIBRATE/SETTINGS、`50-teach-nodes.md` 选中节点后的 TEACH、`60-login.md` 登录对话框、`70-global-dialogs.md` rail 触发的全局对话框与加载遮罩）。**改界面先读对应的 spec，量出新数值后同步改 spec。**
 
 ## 1. 设计图与截图偏移
 
@@ -26,10 +26,14 @@
 | right-block-AlignROI-SR.png | 3 | 4 |
 | right-block-AlignROI-DMG.png | 2 | 7 |
 | left-block-menu-login[no.2 icon].png | 3 | 2 |
+| left-block-model-select[no.4 icon].png | 2 | 2 |
+| left-block-menu-image[no.5 icon].png（顶部带 20px Windows 标题栏） | 2 | 22 |
+| left-block-menu-Cam-Generate[no.6 icon].png | 1 | 3 |
+| left-block-menu-Align[no.7 icon]…png | 5 | 3 |
 
 后四张整窗图的客户区约 1778×925，所以截图要写 `scripts/snap.sh --route /teach --size 1778x925`；右栏局部图（AU~OSP、NonMetal、User Mask）是裁剪图，偏移含义见 `design/spec/50-teach-nodes.md`。
 
-页面里要进入某个参考状态（选中节点、对话框打开、指针在图上…）用开发预设，不用点：`?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>`、`?pointer=x,y`、`?dialog=login`、`?scroll=bottom|<px>`（参考图的树滚动了 108px）、`?tool=gv|ruler`、`?spec=dummy`，定义在 `frontend/src/dev/preset.ts`，只在 `import.meta.env.DEV` 下生效。
+页面里要进入某个参考状态（选中节点、对话框打开、指针在图上…）用开发预设，不用点：`?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>`、`?pointer=x,y`、`?dialog=login|model|grab|generate`、`?busy=1`（对话框和遮罩是窗口级的，在任何 `--route` 上都有效）、`?scroll=bottom|<px>`（参考图的树滚动了 108px）、`?tool=gv|ruler`、`?spec=dummy`，定义在 `frontend/src/dev/preset.ts`，只在 `import.meta.env.DEV` 下生效。
 spec 里的坐标已经是设计坐标（`y_设计 = y_图 − dy`）。量颜色和尺寸时用图中坐标，再换算。
 
 ## 2. 起开发服务器并截图

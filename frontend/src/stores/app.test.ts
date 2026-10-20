@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { createApp } from 'vue'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
 import { useAppStore } from './app'
@@ -36,5 +36,51 @@ describe('app store', () => {
     expect(since.getHours()).toBe(16)
     expect(since.getMinutes()).toBe(35)
     expect(since.getSeconds()).toBe(23)
+  })
+
+  it('starts with the other dialogs and the overlay closed', async () => {
+    const store = await withStore()
+    expect(store.modelOpen).toBe(false)
+    expect(store.grabOpen).toBe(false)
+    expect(store.generateOpen).toBe(false)
+    expect(store.busy).toBe(false)
+  })
+
+  describe('runBusy', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows the overlay for the given time', async () => {
+      const store = await withStore()
+      store.runBusy(1000)
+      expect(store.busy).toBe(true)
+
+      vi.advanceTimersByTime(999)
+      expect(store.busy).toBe(true)
+
+      vi.advanceTimersByTime(1)
+      expect(store.busy).toBe(false)
+    })
+
+    it('restarts the countdown when called again while the overlay shows', async () => {
+      const store = await withStore()
+      store.runBusy(1000)
+      expect(store.busy).toBe(true)
+
+      vi.advanceTimersByTime(500)
+      store.runBusy(1000)
+      expect(store.busy).toBe(true)
+
+      vi.advanceTimersByTime(600)
+      expect(store.busy).toBe(true)
+
+      vi.advanceTimersByTime(400)
+      expect(store.busy).toBe(false)
+    })
   })
 })

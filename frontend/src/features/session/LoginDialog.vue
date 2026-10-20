@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { Eye, EyeOff } from '@lucide/vue'
 import AppDialog from '@/components/app/AppDialog.vue'
+import DialogButton from '@/components/app/DialogButton.vue'
 import { useAppStore } from '@/stores/app'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -127,19 +128,9 @@ function logout() {
       </button>
     </div>
 
-    <button
-      type="button"
-      class="border-dialog-line bg-sheet-row text-2xs absolute top-[243px] left-[239px] h-[22px] w-[93px] border text-white"
-      @click="logout"
-    >
+    <DialogButton primary class="absolute top-[243px] left-[239px]" @click="logout">
       Logout
-    </button>
-    <button
-      type="button"
-      class="border-dialog-line-dim bg-sheet-row text-2xs absolute top-[243px] left-[338px] h-[22px] w-[93px] border text-white"
-      @click="close"
-    >
-      Cancel
-    </button>
+    </DialogButton>
+    <DialogButton class="absolute top-[243px] left-[338px]" @click="close">Cancel</DialogButton>
   </AppDialog>
 </template>

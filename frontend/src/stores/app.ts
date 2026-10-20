@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 import { useApi } from '@/api'
 import type { AppInfo, SessionInfo } from '@/api/types'
 
@@ -22,6 +22,15 @@ export const useAppStore = defineStore('app', () => {
   const session = ref<SessionInfo | null>(null)
   /** The "Log in/out" dialog (the User button of the rail). */
   const loginOpen = ref(false)
+  /** The "Choose Model Names" dialog (the Model button of the rail). */
+  const modelOpen = ref(false)
+  /** The "Load grab images" dialog (the Images button). */
+  const grabOpen = ref(false)
+  /** The "Generate Option" dialog (the Nodes button). */
+  const generateOpen = ref(false)
+  /** The "Please wait..." overlay that blocks the window while the machine works. */
+  const busy = ref(false)
+  let busyTimer: ReturnType<typeof setTimeout> | undefined
   const status = ref<MachineStatus>('ready')
 
   async function load() {
@@ -31,5 +40,29 @@ export const useAppStore = defineStore('app', () => {
     user.value = { name: sessionInfo.current, since: parseSessionTime(sessionInfo.since) }
   }
 
-  return { info, user, session, loginOpen, status, load }
+  // A timer that outlives the store would write to a store nobody reads any more.
+  onScopeDispose(() => clearTimeout(busyTimer))
+
+  /** Shows the overlay for `ms` milliseconds. The mock machine finishes by itself. */
+  function runBusy(ms: number) {
+    clearTimeout(busyTimer)
+    busy.value = true
+    busyTimer = setTimeout(() => {
+      busy.value = false
+    }, ms)
+  }
+
+  return {
+    info,
+    user,
+    session,
+    loginOpen,
+    modelOpen,
+    grabOpen,
+    generateOpen,
+    busy,
+    status,
+    load,
+    runBusy,
+  }
 })

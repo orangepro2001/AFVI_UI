@@ -6,6 +6,7 @@ import type {
   DefectRow,
   HomeSnapshot,
   LogEntry,
+  ModelEntry,
   NodeAnalysis,
   SessionInfo,
   SettingsSnapshot,
@@ -30,6 +31,8 @@ export interface ApiClient {
   getNodeAnalysis(nodeId: string): Promise<NodeAnalysis>
   /** The signed-in user and the accounts of the "Log in/out" dialog. */
   getSession(): Promise<SessionInfo>
+  /** The models of the "Choose Model Names" dialog. */
+  getModels(): Promise<ModelEntry[]>
   /** The defects of the strip on the REVIEW page (empty until an inspection has run). */
   getDefects(): Promise<DefectRow[]>
   /** The light strip picture and the 20 channels of the CALIBRATE page. */

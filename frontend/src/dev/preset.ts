@@ -23,7 +23,8 @@ const nodes: Record<string, string> = {
  *   ?spec=dummy        Dummy tab of the specification
  *   ?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>   selected node of the tree
  *   ?pointer=x,y       the pointer has been over the picture: XY of the read-out bar
- *   ?dialog=login      the "Log in/out" dialog
+ *   ?dialog=login|model|grab|generate   one of the rail's dialogs (open on any ?route)
+ *   ?busy=1            the "Please wait..." overlay (stays until the page is reloaded)
  *   ?scroll=bottom|<px>   the specification tree scrolled to its end, or by that many pixels
  */
 export function applyPreset(params: URLSearchParams, app: App): void {
@@ -42,7 +43,22 @@ export function applyPreset(params: URLSearchParams, app: App): void {
         workbench.pointerSeen = true
       })
     }
-    if (params.get('dialog') === 'login') useAppStore().loginOpen = true
+    const app = useAppStore()
+    switch (params.get('dialog')) {
+      case 'login':
+        app.loginOpen = true
+        break
+      case 'model':
+        app.modelOpen = true
+        break
+      case 'grab':
+        app.grabOpen = true
+        break
+      case 'generate':
+        app.generateOpen = true
+        break
+    }
+    if (params.get('busy') === '1') app.busy = true
   })
 
   const scroll = params.get('scroll')
