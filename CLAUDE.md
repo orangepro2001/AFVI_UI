@@ -20,6 +20,7 @@ cd frontend && pnpm check             # 类型、ESLint、Prettier、Vitest
 scripts/snap.sh --route /teach --query freeze   # 无头 Chrome 截图（需 dev server 在跑）
 go run scripts/diffgrid.go ours.png ref.png dx dy 40 [x y w h]   # 与设计图的差异热力图
 scripts/bindings.sh [--check]
+go run scripts/ciwait.go [-sha <提交>]   # 推送后等流水线走完：服务器构建 → Windows 测试 → nightly（读公开 API，不要令牌）
 go run scripts/devapi.go [-config <文件>]   # 开发用：让浏览器里的前端读 Go 后端（?api=http://127.0.0.1:8099）；主机路径在 Connector 对话框里配
 ```
 
@@ -32,6 +33,15 @@ go run scripts/devapi.go [-config <文件>]   # 开发用：让浏览器里的�
 - 窗口比 1778×929 大时，每个元素保持设计图里贴着的那条边（工具栏与绘图工具列贴右，右栏面板铺满高度、底部按钮贴底），设计尺寸下必须逐像素不变。规则见 `design/spec/00-frame.md`。
 - 文档用中文。提交信息前缀 `AFVI_UI: `。
 - 不要 `git add -A`，不要 amend/reset；提交和推送需要用户明确授权当次任务。
+
+## 发布流水线
+
+推送 `main` 后全自动：服务器（`ssh AI`）构建并发布候选 `ci-<短提交>` → GitHub 的 Windows 机器测试 → 通过才替换 `nightly` → Windows 电脑上的计划任务 `AFVI-UI-Sync` 把 exe 放到桌面（并删旧版）。细节与排错见 [docs/CI.md](docs/CI.md)。
+
+- `nightly` 只由 `.github/workflows/windows.yml` 的 `promote` 写，候选 `ci-*` 只由服务器写；不要手工往里传文件、不要在这两个标签上打别的东西。
+- 版本号只认 `v*` 标签（`git describe --match 'v*'`）；不要建别的、会被当成版本的标签。
+- 改了 `windows.yml`、`scripts/ci/*`、`scripts/desktop-sync/*` 或 `deploy/server/ci` 要照 CI.md“改动流水线之后怎么测”走一遍；改 `deploy/server/ci` 后还要 `deploy/server/install.sh` 部署到服务器。
+- 桌面同步只删 `AFVI-UI-*-windows-amd64.exe`，正在运行的旧版留着，下一轮再删。
 
 ## 加一个页面
 

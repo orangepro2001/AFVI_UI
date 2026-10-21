@@ -17,8 +17,13 @@
 #   out/    one folder per build: the executable, SHA256SUMS.txt, build.log, meta.json
 #   state/  the lock file
 #
-# main: every new head is built and replaces the rolling prerelease "nightly".
-# v* tags: built once and published as their own Release. Tags are treated as immutable.
+# main: every new head is built and published as the candidate prerelease "ci-<sha7>" (the
+#       executable, SHA256SUMS.txt and the Go tests compiled for Windows). Publishing it starts
+#       .github/workflows/windows.yml on GitHub, which tests the executable on Windows and only
+#       then replaces the rolling prerelease "nightly" (docs/CI.md). This script never touches
+#       "nightly" itself.
+# v* tags: built once and published as their own Release (no wintests archive). Tags are treated
+#       as immutable.
 
 set -euo pipefail
 
@@ -170,10 +175,11 @@ set_commit_status() {
     [ "$API_CODE" = 201 ] || log "commit status not set (GitHub answered $API_CODE; the token needs Commit statuses: Read and write)"
 }
 
-# upload_assets <release id> <dir> [names already on the release]
+# upload_assets <release id> <dir> <names already on the release, may be empty> [extra file...]
 upload_assets() {
-    local id=$1 dir=$2 have=${3:-} f name
-    for f in "$dir"/AFVI-UI-*-windows-amd64.exe "$dir/SHA256SUMS.txt"; do
+    local id=$1 dir=$2 have=$3 f name
+    shift 3
+    for f in "$dir"/AFVI-UI-*-windows-amd64.exe "$dir/SHA256SUMS.txt" "$@"; do
         name=$(basename "$f")
         if [ -n "$have" ] && grep -qxF "$name" <<< "$have"; then
             continue
@@ -184,46 +190,67 @@ upload_assets() {
     done
 }
 
-# publish_nightly <sha> <version> <dir>: delete the old rolling prerelease (and its tag), create it
-# again on this commit.
-publish_nightly() {
-    local sha=$1 version=$2 dir=$3 id subject notes body
-    gh_api GET "$API/repos/$REPO/releases/tags/nightly" || return 1
-    case $API_CODE in
-        200)
-            id=$(jq -r .id <<< "$API_BODY")
-            gh_api DELETE "$API/repos/$REPO/releases/$id" || return 1
-            expect 204 || return 1
-            ;;
-        404) ;;
-        *)
-            expect 200 404
-            return 1
-            ;;
-    esac
-    gh_api DELETE "$API/repos/$REPO/git/refs/tags/nightly" || return 1
-    expect 204 404 422 || return 1
+# remove_release <tag>: every release with this tag, drafts included (a draft is not found by
+# releases/tags/<tag>), and the tag itself. What an earlier, interrupted attempt left behind.
+remove_release() {
+    local tag=$1 id
+    gh_api GET "$API/repos/$REPO/releases?per_page=100" || return 1
+    expect 200 || return 1
+    while read -r id; do
+        [ -n "$id" ] || continue
+        gh_api DELETE "$API/repos/$REPO/releases/$id" || return 1
+        expect 204 || return 1
+    done < <(jq -r --arg t "$tag" '.[] | select(.tag_name == $t) | .id' <<< "$API_BODY")
+    gh_api DELETE "$API/repos/$REPO/git/refs/tags/$tag" || return 1
+    expect 204 404 422
+}
+
+# remove_drafts <tag>: only the draft releases with this tag, never the tag itself (a v* tag is the
+# user's and immutable). What an interrupted attempt of publish_tag leaves behind.
+remove_drafts() {
+    local tag=$1 id
+    gh_api GET "$API/repos/$REPO/releases?per_page=100" || return 1
+    expect 200 || return 1
+    while read -r id; do
+        [ -n "$id" ] || continue
+        gh_api DELETE "$API/repos/$REPO/releases/$id" || return 1
+        expect 204 || return 1
+    done < <(jq -r --arg t "$tag" '.[] | select(.tag_name == $t and .draft) | .id' <<< "$API_BODY")
+}
+
+# publish_candidate <sha> <version> <dir>: the prerelease "ci-<sha7>" for the GitHub Windows tests.
+# It is created as a draft, gets all its files, and is published last, so the release event that
+# starts .github/workflows/windows.yml fires when everything is there. The token of this script
+# is a personal one on purpose: events caused by a workflow's own GITHUB_TOKEN start no workflow.
+publish_candidate() {
+    local sha=$1 version=$2 dir=$3 tag id subject notes body
+    tag=ci-${sha:0:7}
+    remove_release "$tag" || return 1
 
     subject=$(git -C "$SRC" log -1 --format=%s "$sha")
     notes=$(printf '%s\n' \
-        "每次推送到 main 自动构建的滚动预发布，下一次推送会覆盖它。" \
+        "候选构建，等 GitHub 的 Windows 机器测试通过后，由 windows 工作流替换 nightly 并自动删除本发布。" \
+        "测试失败时保留 7 天，可手动下载排查。" \
         "" \
         "- 提交：${sha:0:7}（$subject）" \
-        "- 版本号：$version" \
-        "- 在自有构建服务器上构建，可执行文件未签名。运行需要 Windows 10 1809 及以上，以及 WebView2 运行时（Windows 11 自带）。需要稳定版本请用带版本号的 Release。")
-    body=$(jq -nc --arg sha "$sha" --arg name "Nightly (main ${sha:0:7})" --arg notes "$notes" \
-        '{tag_name:"nightly",target_commitish:$sha,name:$name,body:$notes,prerelease:true,draft:false}')
+        "- 版本号：$version")
+    body=$(jq -nc --arg tag "$tag" --arg sha "$sha" --arg name "Candidate (main ${sha:0:7})" --arg notes "$notes" \
+        '{tag_name:$tag,target_commitish:$sha,name:$name,body:$notes,prerelease:true,draft:true}')
     gh_api POST "$API/repos/$REPO/releases" -H 'Content-Type: application/json' -d "$body" || return 1
     expect 201 || return 1
     id=$(jq -r .id <<< "$API_BODY")
+    upload_assets "$id" "$dir" "" "$dir"/AFVI-UI-*-wintests.tar.gz || return 1
+    gh_api PATCH "$API/repos/$REPO/releases/$id" -H 'Content-Type: application/json' \
+        -d '{"draft":false,"prerelease":true}' || return 1
+    expect 200 || return 1
     RELEASE_URL=$(jq -r .html_url <<< "$API_BODY")
-    upload_assets "$id" "$dir"
 }
 
 # publish_tag <tag> <sha> <dir>: a Release of its own; one that already exists is never replaced,
-# only completed with the files it lacks.
+# only completed with the files it lacks. A new one is created as a draft and published after its
+# files are uploaded, so the release event that starts the Windows test sees all of them.
 publish_tag() {
-    local tag=$1 sha=$2 dir=$3 id have="" pre=false body
+    local tag=$1 sha=$2 dir=$3 id have="" pre=false body fresh=0
     case $tag in *-*) pre=true ;; esac
     gh_api GET "$API/repos/$REPO/releases/tags/$tag" || return 1
     case $API_CODE in
@@ -233,19 +260,26 @@ publish_tag() {
             have=$(jq -r '.assets[].name' <<< "$API_BODY")
             ;;
         404)
+            remove_drafts "$tag" || return 1
             body=$(jq -nc --arg tag "$tag" --arg sha "$sha" --argjson pre "$pre" \
-                '{tag_name:$tag,target_commitish:$sha,name:$tag,generate_release_notes:true,prerelease:$pre,draft:false}')
+                '{tag_name:$tag,target_commitish:$sha,name:$tag,generate_release_notes:true,prerelease:$pre,draft:true}')
             gh_api POST "$API/repos/$REPO/releases" -H 'Content-Type: application/json' -d "$body" || return 1
             expect 201 || return 1
             id=$(jq -r .id <<< "$API_BODY")
-            RELEASE_URL=$(jq -r .html_url <<< "$API_BODY")
+            fresh=1
             ;;
         *)
             expect 200 404
             return 1
             ;;
     esac
-    upload_assets "$id" "$dir" "$have"
+    upload_assets "$id" "$dir" "$have" || return 1
+    if [ "$fresh" = 1 ]; then
+        gh_api PATCH "$API/repos/$REPO/releases/$id" -H 'Content-Type: application/json' \
+            -d "$(jq -nc --argjson pre "$pre" '{draft:false,prerelease:$pre}')" || return 1
+        expect 200 || return 1
+        RELEASE_URL=$(jq -r .html_url <<< "$API_BODY")
+    fi
 }
 
 # publish_target <kind> <name> <sha> <dir>
@@ -254,7 +288,7 @@ publish_target() {
     meta_update "$dir" '.publish_tried=$e' --argjson e "$(date +%s)"
     RELEASE_URL=""
     if [ "$kind" = main ]; then
-        publish_nightly "$sha" "$(meta_get "$dir" version)" "$dir" || rc=$?
+        publish_candidate "$sha" "$(meta_get "$dir" version)" "$dir" || rc=$?
     else
         publish_tag "$name" "$sha" "$dir" || rc=$?
     fi
@@ -282,13 +316,16 @@ head_sha() { git -C "$SRC" rev-parse --verify -q "refs/heads/$BRANCH^{commit}"; 
 tag_sha() { git -C "$SRC" rev-parse --verify -q "refs/tags/$1^{commit}"; }
 list_tags() { git -C "$SRC" for-each-ref --format='%(refname:strip=2)' "refs/tags/$TAG_GLOB"; }
 
-# finish_build <work> <dir>: copy the executable out of the checkout, checksum it, record it in meta.json.
+# finish_build <work> <dir>: copy the executable and the Windows test archive out of the checkout,
+# checksum them, record them in meta.json. SHA256SUMS.txt lists the executable only: it is what
+# the nightly Release publishes and what the desktop sync verifies.
 finish_build() {
     local work=$1 dir=$2 files
     compgen -G "$work/dist/AFVI-UI-*-windows-amd64.exe" > /dev/null || return 1
-    cp "$work"/dist/AFVI-UI-*-windows-amd64.exe "$dir/" || return 1
+    compgen -G "$work/dist/AFVI-UI-*-wintests.tar.gz" > /dev/null || return 1
+    cp "$work"/dist/AFVI-UI-*-windows-amd64.exe "$work"/dist/AFVI-UI-*-wintests.tar.gz "$dir/" || return 1
     (cd "$dir" && sha256sum AFVI-UI-*-windows-amd64.exe > SHA256SUMS.txt) || return 1
-    files=$(cd "$dir" && sha256sum AFVI-UI-*-windows-amd64.exe | jq -R 'split("  ") | {sha256: .[0], name: .[1]}' | jq -s .) || return 1
+    files=$(cd "$dir" && sha256sum AFVI-UI-*-windows-amd64.exe AFVI-UI-*-wintests.tar.gz | jq -R 'split("  ") | {sha256: .[0], name: .[1]}' | jq -s .) || return 1
     meta_update "$dir" '.status="built" | .finished=$t | .finished_epoch=$e | .files=$files | .toolchain=$tc' \
         --arg t "$(now)" --argjson e "$(date +%s)" --argjson files "$files" \
         --arg tc "$(go version | cut -d' ' -f3), wails $(awk '$1=="github.com/wailsapp/wails/v2"{print $2; exit} $1=="require" && $2=="github.com/wailsapp/wails/v2"{print $3; exit}' "$work/go.mod")"
@@ -316,7 +353,8 @@ build_target() {
     if git clone --quiet --no-checkout "$SRC" "$work" > "$dir/build.log" 2>&1 \
         && git -C "$work" checkout --quiet --detach "$sha" >> "$dir/build.log" 2>&1; then
         if [ "$kind" = main ]; then
-            version=$(git -C "$work" describe --tags --always)
+            # v* tags only: the tags "nightly" and "ci-<sha7>" of this CI must not end up in the version.
+            version=$(git -C "$work" describe --tags --match 'v*' --always)
             meta_update "$dir" '.version=$v' --arg v "$version"
         fi
         log "building $kind $name (${sha:0:7}) as $version, log $dir/build.log"

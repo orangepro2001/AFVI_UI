@@ -10,7 +10,7 @@ Pixel Vision Inspection System 的桌面界面工程。**前端优先**：先在
 | 样式 | Tailwind CSS v4 **独立可执行文件**（不使用 npm 版 Tailwind），主题全部抽成 CSS 变量 |
 | 包管理 | pnpm 12（精确版本、24 小时冷却、provenance 检查），Node 由 pnpm 自己下载并锁版本 |
 | 测试 | Vitest + happy-dom，ESLint 10、Prettier、vue-tsc |
-| 发布 | 推送到 `main` 后，构建服务器（`ssh AI`）自动构建并刷新 `nightly` 预发布；打 `v*` 标签发布正式 Release |
+| 发布 | 推送到 `main` 后，构建服务器（`ssh AI`）构建，GitHub 的 Windows 机器测试通过后刷新 `nightly` 预发布，Windows 电脑上的计划任务把 exe 放到桌面（[docs/CI.md](docs/CI.md)）；打 `v*` 标签发布正式 Release |
 
 ## 快速开始
 
@@ -36,8 +36,9 @@ pnpm dev                         # http://localhost:5173 ，使用模拟数据�
 ```
 main.go app.go           Wails 入口与绑定给前端的 Go 方法（App）
 wails.json               Wails 工程配置
-scripts/                 构建、工具下载、绑定生成、截图、shadcn-vue 组件添加
-deploy/server/           构建服务器的驱动脚本与 systemd 单元（ssh AI）
+scripts/                 构建、工具下载、绑定生成、截图、shadcn-vue 组件添加；ci/ 是 GitHub Windows 机器上的测试脚本，desktop-sync/ 是桌面同步
+.github/workflows/       windows.yml：Windows 实机测试并发布 nightly
+deploy/server/           构建服务器的驱动脚本与 systemd 单元（ssh AI）、演练用的模拟 GitHub API
 design/                  设计图（reference/）与截图（snap/，不入库）
 docs/                    文档
 frontend/                Vite + Vue 工程
@@ -58,7 +59,8 @@ frontend/                Vite + Vue 工程
 - [docs/FRONTEND.md](docs/FRONTEND.md)：前端架构、主题分层、API 层、如何加页面和组件
 - [docs/UI_WORKFLOW.md](docs/UI_WORKFLOW.md)：拿到设计图后如何 1:1 还原（截图、叠加比对、取色）
 - [docs/BUILD.md](docs/BUILD.md)：本地构建、检查项、版本号、Windows 运行要求
-- [docs/SERVER_CI.md](docs/SERVER_CI.md)：构建服务器如何自动发布 nightly，如何安装、排错、卸载
+- [docs/CI.md](docs/CI.md)：从推送到桌面上的 exe：服务器构建、GitHub 的 Windows 测试、nightly、桌面同步
+- [docs/SERVER_CI.md](docs/SERVER_CI.md)：构建服务器这一段：如何安装、令牌、排错、卸载
 - [docs/PACKAGES.md](docs/PACKAGES.md)：依赖与供应链策略、为什么固定这些版本
 - [design/README.md](design/README.md)：设计图放哪里、怎么命名
 - [CLAUDE.md](CLAUDE.md)：给 AI 助手的工程约定

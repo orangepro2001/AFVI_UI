@@ -1,27 +1,32 @@
-# 构建服务器：推送后自动发布 nightly
+# 构建服务器：推送后自动构建并发布候选
 
-构建服务器是 `ssh AI`（用户 `tony`）。它**主动去拉** GitHub，不需要从外面连进来，也不需要在 GitHub 上配置 webhook 或 Actions：
+> 整条流水线（构建 → GitHub 的 Windows 测试 → nightly → 桌面）见 [CI.md](CI.md)。本文只讲服务器这一段。
+
+构建服务器是 `ssh AI`（用户 `tony`）。它**主动去拉** GitHub，不需要从外面连进来，也不需要配置 webhook：
 
 ```
 git push → GitHub (orangepro2001/AFVI_UI, 公开仓库)
                  ↑ 每分钟 fetch
-   服务器 systemd 用户定时器 → ci poll → scripts/build.sh → dist/AFVI-UI-<版本>-windows-amd64.exe
-                 ↓ GitHub REST API（令牌）
-   滚动预发布 "nightly"（main 的每个新提交）／ 标签 v* 对应的正式 Release
+   服务器 systemd 用户定时器 → ci poll → scripts/build.sh → exe、SHA256SUMS.txt、wintests.tar.gz
+                 ↓ GitHub REST API（个人令牌）
+   候选预发布 "ci-<短提交>"（main 的每个新提交）／ 标签 v* 对应的正式 Release
+                 ↓ “发布”事件触发 .github/workflows/windows.yml：Windows 上测试通过后由它替换 nightly
 ```
+
+**服务器不再碰 `nightly`**，只有测试通过的 exe 才会成为 nightly。
 
 和同机的 AFVI_TEACH 的 CI 同一套思路，但目录、定时器、令牌各自独立（`~/ci/afvi-ui`，`afvi-ui-ci.timer`），互不影响。
 
 ## 行为
 
-- **main 分支**：每个新的提交都会构建。成功后删除旧的 `nightly` Release 和标签，用新提交重新创建（预发布），上传 `AFVI-UI-<短提交>-windows-amd64.exe` 和 `SHA256SUMS.txt`。提交旁边会出现 `afvi-ui-ci/server` 状态（构建中 / 成功 / 失败）。
+- **main 分支**：每个新的提交都会构建。成功后发布候选预发布 `ci-<短提交>`：先建草稿，上传 `AFVI-UI-<版本>-windows-amd64.exe`、`SHA256SUMS.txt`（只列 exe）和 `AFVI-UI-<版本>-wintests.tar.gz`（Windows 测试二进制），**最后才公开**，这个“公开”事件触发 Windows 工作流。上次中断遗留的同名发布和草稿会先清掉。提交旁边会出现 `afvi-ui-ci/server` 状态（构建中 / 成功 / 失败）。
 - **只发布最新的 main**：构建期间 main 又前进了，旧提交的构建不会发布（日志里是 `main moved on`），下一轮轮询直接构建新的。
-- **`v*` 标签**：每个标签只构建一次，创建同名 Release（自动生成发布说明；标签里带 `-` 的，如 `v1.0.0-rc1`，标记为预发布）。标签视为不可变。
-- **版本号**：main 构建为短提交号（如 `0d8d6d4`），标签构建为标签名；写进窗口标题和文件名。
-- **失败**：构建失败不会碰现有的 nightly。失败的目标等 `RETRY_WAIT`（600 秒）后重试，最多 `RETRY_MAX`（3）次；新提交重新开始计数。发布（上传）失败单独重试，不会重新构建。
+- **`v*` 标签**：每个标签只构建一次，创建同名 Release（自动生成发布说明；标签里带 `-` 的，如 `v1.0.0-rc1`，标记为预发布）。同样先草稿、传完文件再公开（只有 exe 和校验和，没有测试包）；标签视为不可变，清理遗留草稿时从不删标签。
+- **版本号**：main 构建为短提交号（如 `0d8d6d4`），标签构建为标签名；写进窗口标题和文件名。取法是 `git describe --tags --match 'v*' --always`：只认 `v*`，不会被 `nightly`、`ci-*` 标签带偏。
+- **失败**：构建失败不会产生候选，nightly 当然也不变。失败的目标等 `RETRY_WAIT`（600 秒）后重试，最多 `RETRY_MAX`（3）次；新提交重新开始计数。发布（上传）失败单独重试，不会重新构建。
 - **一次只跑一个**：`state/lock`。构建超过 `BUILD_TIMEOUT`（30 分钟）会被终止。
 - **保留**：`out/main` 保留最新 10 个构建；标签构建永久保留。
-- **检查**：服务器执行的就是 `scripts/build.sh`：gofmt、vet、测试、绑定、类型检查、ESLint、Prettier、Vitest 全过才会出 exe。所以推送一个没格式化的文件会得到失败状态，而不是一个坏的 nightly。
+- **检查**：服务器执行的就是 `scripts/build.sh`：gofmt、vet、测试、绑定、类型检查、ESLint、Prettier、Vitest 全过才会出 exe。所以推送一个没格式化的文件会得到失败状态，而不是一个坏的候选。
 
 ## 服务器上需要什么
 
@@ -49,7 +54,7 @@ deploy/server/install.sh --host OTHER --home /abs/path
 
 ## 设置令牌（只有你能做）
 
-发布 Release 需要写权限，服务器的 `ci` 从 `~/ci/afvi-ui/etc/github-token`（权限 600）读令牌。创建一个**只给这个仓库**的细粒度令牌：
+发布 Release 需要写权限，服务器的 `ci` 从 `~/ci/afvi-ui/etc/github-token`（权限 600）读令牌。**必须是个人令牌，不能换成 Actions 的 `GITHUB_TOKEN`**：GitHub 规定工作流自己的令牌引发的事件不会再触发工作流，而候选发布的“公开”事件正是用来触发 Windows 测试的。创建一个**只给这个仓库**的细粒度令牌：
 
 1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token。
 2. Resource owner：`orangepro2001`；Repository access：**Only select repositories** → 只选 `AFVI_UI`（选 “Public repositories” 是只读，发布会失败）。
@@ -120,15 +125,16 @@ GitHub 上的令牌也要在 GitHub 上撤销。
 | `AFVI_CI_API`、`AFVI_CI_UPLOADS` | GitHub API 与上传地址，指向本地模拟服务 |
 | `GITHUB_TOKEN` | 直接给令牌，不读文件 |
 
-做法：在服务器的临时目录里建一个测试仓库（`git ls-files -co --exclude-standard` 的内容 + 一次本地提交），起一个实现 `releases`、`git/refs/tags`、`releases/{id}/assets`、`statuses` 的小模拟 API，把上面变量指过去，然后依次演练：首次构建并发布 nightly → 再次轮询无动作 → 新提交替换 nightly → 破坏 gofmt 的提交得到失败状态且不碰 nightly、不立即重试 → 新标签得到 Release。这套演练在初次部署时全部走过一遍（构建约 80 秒，缓存热了之后约 30 秒），演练结束后删除测试目录（同样要先 `chmod -R u+w`）。
+做法：建一个测试仓库（`git ls-files -co --exclude-standard` 的内容，排除 `design/repo/`，加一次本地提交），用 `go run deploy/server/mock-github.go` 起模拟 API（实现 `releases`、`git/refs/tags`、`releases/{id}/assets`、`statuses`，并记录“发布”事件），把上面变量指过去，依次演练：首次构建并发布候选（草稿 → 文件 → 公开，一个事件）→ 再次发布清掉旧发布和遗留草稿 → 新提交得到新候选 → 破坏 gofmt 的提交得到失败状态且不发布 → 新标签得到只含 exe 的 Release，标签本身从不被删。完整步骤见 [CI.md](CI.md) 的“改动流水线之后怎么测”。演练结束后删除测试目录（Go 模块缓存是只读的，要先 `chmod -R u+w`）。CI 目录要放在磁盘上，不要放 `/tmp`（内存盘，装不下 Go 构建缓存）。
 
 ## 排错
 
 | 现象 | 看哪里 |
 | --- | --- |
-| 推送后没有 nightly | `ci status`：令牌是否 `MISSING`；定时器是否 `active`；`journalctl` 里有没有 `cannot fetch`（仓库还没有 `main` 或网络问题） |
+| 推送后没有候选 `ci-<短提交>` | `ci status`：令牌是否 `MISSING`；定时器是否 `active`；`journalctl` 里有没有 `cannot fetch`（仓库还没有 `main` 或网络问题） |
+| 有候选但 nightly 没更新 | 不是服务器的事：看 Actions 里 `windows` 工作流，见 [CI.md](CI.md) 的排错表 |
 | 状态是 `failed` | `out/main/<…>/build.log` 末尾；本地用同一个提交跑 `./scripts/build.sh` 复现 |
 | `GitHub answered 403/404` | 令牌权限或过期：重新 `ci set-token` |
 | 一直 `another run is in progress` | 正在构建；或上次被杀留下的锁——锁是 `flock`，进程结束就自动释放，不需要手动删 |
 | 磁盘增长 | `cache/` 可以整个删（下次构建变慢）；`out/main` 自动保留 10 个 |
-| nightly 的 exe 版本显示提交号 | 这是设计：窗口标题里 `Version : <短提交>` |
+| exe 的版本显示提交号 | 这是设计：窗口标题里 `Version : <短提交>` |

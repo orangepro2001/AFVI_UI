@@ -42,17 +42,17 @@ pnpm dev            # 浏览器 http://localhost:5173 ，模拟数据
 ./scripts/build.sh [--version V] [--skip-checks] [--offline]
 ```
 
-顺序：工具 → `gofmt -l` → `go vet` → `go test` → 绑定是否最新（`scripts/bindings.sh --check`）→ `pnpm install --frozen-lockfile` → `pnpm check` → `go tool wails build -platform windows/amd64 -clean -m -skipbindings -trimpath`。
+顺序：工具 → `gofmt -l` → `go vet` → `go test` → 绑定是否最新（`scripts/bindings.sh --check`）→ `pnpm install --frozen-lockfile` → `pnpm check` → `go tool wails build -platform windows/amd64 -clean -m -skipbindings -trimpath` → `scripts/wintests.sh`（把各包的 Go 测试交叉编译成 Windows 测试二进制并打包）。
 
-产物：`dist/AFVI-UI-<版本>-windows-amd64.exe` 和 `dist/SHA256SUMS.txt`。约 12 MB，GUI 子系统，单文件。
+产物：`dist/AFVI-UI-<版本>-windows-amd64.exe`、`dist/SHA256SUMS.txt`（只列 exe）和 `dist/AFVI-UI-<版本>-wintests.tar.gz`（GitHub 的 Windows 机器上跑，见 [CI.md](CI.md)）。exe 约 12 MB，GUI 子系统，单文件。
 
-- `--version`：写进窗口标题（`Pixel Inspector ( Version : <版本> - AFVI )`）和文件名，通过 `-ldflags "-X main.version=…"` 注入。默认取 `git describe`，没有 git 信息时是 `dev`。
+- `--version`：写进窗口标题（`Pixel Inspector ( Version : <版本> - AFVI )`）和文件名，通过 `-ldflags "-X main.version=…"` 注入。默认取最近的 `v*` 标签（`git describe --tags --match 'v*' --always`），没有标签时是短提交号，没有 git 信息时是 `dev`。只认 `v*`，因为 CI 自己会建 `nightly` 和 `ci-<短提交>` 标签，它们不能混进版本号。
 - `--skip-checks`：只编译，本地快速重编用。构建服务器从不跳过。
 - `--offline`：`GOPROXY=off` 加 `pnpm --offline`，需要缓存已经热了。
 
 构建带 `-trimpath` 且没有时间戳：同一提交、同一版本号在同一台机器上重复构建得到字节相同的文件（服务器上已验证）。
 
-构建服务器运行的就是这个脚本，所以本地能过的检查，服务器上也会过。
+构建服务器运行的就是这个脚本，所以本地能过的检查，服务器上也会过。推送之后的整条流水线（服务器构建 → GitHub 的 Windows 测试 → nightly → 桌面）见 [CI.md](CI.md)。
 
 ## Go 与 Wails
 

@@ -9,7 +9,8 @@ AFVI UI build server - everything the automatic build keeps lives in this folder
     main/<date>-<sha>/    every build of the main branch (the newest 10 are kept)
     tags/<tag>/           every v* tag, kept for ever
     latest-main  ->       newest main build            latest-release ->  newest tag build
-    each folder holds:    AFVI-UI-<version>-windows-amd64.exe, SHA256SUMS.txt, build.log, meta.json
+    each folder holds:    AFVI-UI-<version>-windows-amd64.exe, AFVI-UI-<version>-wintests.tar.gz (main builds),
+                          SHA256SUMS.txt (the exe only), build.log, meta.json
 
   src.git/            bare mirror of the GitHub repo (fetch only, safe to delete: it is cloned again)
   cache/              Go modules and build cache, the pnpm store (packages and the pinned Node), the

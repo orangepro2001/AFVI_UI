@@ -5,10 +5,12 @@
 #
 # Checks: gofmt, go vet, go test, up-to-date Wails bindings, then in frontend/: types, ESLint,
 # Prettier, Vitest. Then `wails build` cross-compiles for Windows (no cgo, no MinGW needed) and
-# the result is copied to dist/AFVI-UI-<version>-windows-amd64.exe with SHA256SUMS.txt.
+# the result is copied to dist/AFVI-UI-<version>-windows-amd64.exe with SHA256SUMS.txt. The Go tests
+# are compiled for Windows too (scripts/wintests.sh) into dist/AFVI-UI-<version>-wintests.tar.gz,
+# which the GitHub Windows runner runs (docs/CI.md).
 #
-#   --version V     version shown in the window title and the file name (default: git describe,
-#                   else "dev")
+#   --version V     version shown in the window title and the file name (default: the nearest v*
+#                   tag from git describe, else the short commit, else "dev")
 #   --skip-checks   only build (quick local rebuild; the build server never skips)
 #   --offline       GOPROXY=off and pnpm --offline (needs warm caches)
 #
@@ -46,7 +48,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$VERSION" ]; then
-    VERSION=$(git describe --tags --always 2> /dev/null || echo dev)
+    # Only v* tags count: the CI also creates the tags "nightly" and "ci-<sha7>", which would
+    # otherwise turn up in the version ("nightly-1-g...").
+    VERSION=$(git describe --tags --match 'v*' --always 2> /dev/null || echo dev)
 fi
 
 if ! command -v go &> /dev/null; then
@@ -109,9 +113,13 @@ fi
 # --- 6. dist -----------------------------------------------------------------
 name="AFVI-UI-${VERSION}-windows-amd64.exe"
 mkdir -p dist
-rm -f dist/AFVI-UI-*-windows-amd64.exe dist/SHA256SUMS.txt
+rm -f dist/AFVI-UI-*-windows-amd64.exe dist/AFVI-UI-*-wintests.tar.gz dist/SHA256SUMS.txt
 cp "$exe" "dist/$name"
 (cd dist && sha256sum "$name" > SHA256SUMS.txt)
+
+# --- 7. Go tests compiled for Windows ----------------------------------------
+echo "==> Windows test binaries"
+./scripts/wintests.sh "dist/AFVI-UI-${VERSION}-wintests.tar.gz"
 
 echo "Built dist/$name ($(du -h "dist/$name" | cut -f1))"
 echo "OK"

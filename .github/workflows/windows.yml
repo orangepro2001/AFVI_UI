@@ -1,0 +1,143 @@
+# Windows gate for the build server's artifacts (docs/CI.md).
+#
+# The build server (ssh AI) runs scripts/build.sh and publishes the result as the prerelease
+# "ci-<sha7>" (the executable, SHA256SUMS.txt and the Go tests compiled for Windows). Publishing
+# that release starts this workflow on a real Windows machine, which
+#   1. checks the checksums,
+#   2. runs the Go tests compiled for Windows,
+#   3. starts the executable and looks at its window.
+# When all of it passes, the tested executable replaces the rolling prerelease "nightly" and the
+# candidate is deleted. Nothing untested ever becomes "nightly".
+#
+# The server creates the release with a personal access token on purpose: events caused by the
+# GITHUB_TOKEN of a workflow never start another workflow, events caused by a personal token do.
+# Releases of v* tags are tested too (after publishing, nothing is promoted).
+# By hand: Actions -> windows -> Run workflow, tag = nightly | ci-<sha7> | v1.2.3.
+
+name: windows
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test: nightly, ci-<sha7> or a v* tag"
+        required: true
+        default: nightly
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  GH_TOKEN: ${{ github.token }}
+
+concurrency:
+  group: windows-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: test
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'ci-') || startsWith(github.event.release.tag_name, 'v')
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      # The tag's commit: the Go tests read testdata/ from the same commit the binaries were built from.
+      - name: Check out the tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Download the release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force _ci | Out-Null
+          gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --dir _ci --pattern 'AFVI-UI-*-windows-amd64.exe' --pattern 'SHA256SUMS.txt'
+          if ($LASTEXITCODE -ne 0) { throw "cannot download the executable of release $env:TAG" }
+          gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --dir _ci --pattern '*-wintests.tar.gz'
+          if ($LASTEXITCODE -ne 0) { Write-Host "release $env:TAG has no wintests archive, the Go tests are skipped" }
+          Get-ChildItem _ci | Format-Table Name, Length
+          exit 0
+
+      - name: Verify checksums
+        shell: pwsh
+        run: ./scripts/ci/verify-sums.ps1 -Dir _ci
+
+      - name: Go tests on Windows
+        shell: pwsh
+        run: ./scripts/ci/run-wintests.ps1 -Dir _ci -Repo $env:GITHUB_WORKSPACE
+
+      - name: Start the exe
+        shell: pwsh
+        run: ./scripts/ci/smoke.ps1 -Dir _ci -Out _ci/smoke -RequireWindow -InstallWebView2
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-test-${{ env.TAG }}
+          path: |
+            _ci/smoke
+            _ci/wintests.log
+          retention-days: 14
+          if-no-files-found: warn
+
+  promote:
+    name: promote
+    needs: test
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'ci-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # One promotion at a time; a later one waits instead of racing on the "nightly" tag.
+    concurrency:
+      group: promote-nightly
+      cancel-in-progress: false
+    steps:
+      - name: Replace nightly with the tested build
+        run: |
+          set -euo pipefail
+          repo=$GITHUB_REPOSITORY
+          sha=$(gh api "repos/$repo/git/ref/tags/$TAG" --jq .object.sha)
+          head=$(gh api "repos/$repo/commits/main" --jq .sha)
+          if [ "$sha" != "$head" ]; then
+            echo "main moved on to ${head:0:7}, $TAG (${sha:0:7}) is not promoted"
+            gh release delete "$TAG" --repo "$repo" --cleanup-tag --yes
+            exit 0
+          fi
+
+          mkdir _ci
+          gh release download "$TAG" --repo "$repo" --dir _ci --pattern 'AFVI-UI-*-windows-amd64.exe' --pattern 'SHA256SUMS.txt'
+          (cd _ci && sha256sum -c SHA256SUMS.txt)
+          exe=$(basename _ci/AFVI-UI-*-windows-amd64.exe)
+          version=${exe#AFVI-UI-}
+          version=${version%-windows-amd64.exe}
+          subject=$(gh api "repos/$repo/commits/$sha" --jq '.commit.message | split("\n")[0]')
+
+          printf '%s\n' \
+            "每次推送到 main 自动构建的滚动预发布，下一次推送会覆盖它。" \
+            "" \
+            "- 提交：${sha:0:7}（$subject）" \
+            "- 版本号：$version" \
+            "- 在自有构建服务器上构建，GitHub 的 Windows 机器上跑过 Go 测试并启动过窗口，通过后才发布到这里。可执行文件未签名。运行需要 Windows 10 1809 及以上，以及 WebView2 运行时（Windows 11 自带）。需要稳定版本请用带版本号的 Release。" \
+            > notes.md
+
+          gh release delete nightly --repo "$repo" --cleanup-tag --yes || true
+          gh release create nightly --repo "$repo" --prerelease --target "$sha" \
+            --title "Nightly (main ${sha:0:7})" --notes-file notes.md \
+            "_ci/$exe" _ci/SHA256SUMS.txt
+          echo "nightly is now ${sha:0:7} ($version)"
+
+          # From here on nightly is done; cleaning up must not turn the run red.
+          gh release delete "$TAG" --repo "$repo" --cleanup-tag --yes || echo "warning: could not delete the candidate $TAG"
+          # Candidates whose tests failed stay for a week (for pulling by hand), then go.
+          cutoff=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh release list --repo "$repo" --limit 200 --json tagName,createdAt \
+            --jq ".[] | select(.tagName | startswith(\"ci-\")) | select(.createdAt < \"$cutoff\") | .tagName" |
+            while read -r old; do
+              echo "removing old candidate $old"
+              gh release delete "$old" --repo "$repo" --cleanup-tag --yes || echo "warning: could not delete $old"
+            done || true

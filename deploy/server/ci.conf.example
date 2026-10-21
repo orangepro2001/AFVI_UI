@@ -5,7 +5,8 @@
 # GitHub repository (owner/name). It is public, so the server fetches the source without credentials.
 REPO=orangepro2001/AFVI_UI
 
-# main builds replace the rolling prerelease "nightly"; tags matching the pattern get a Release of their own.
+# main builds are published as the candidate prerelease "ci-<sha7>"; the Windows workflow on GitHub tests it and
+# only then replaces the rolling prerelease "nightly" (docs/CI.md). Tags matching the pattern get a Release of their own.
 BRANCH=main
 TAG_GLOB='v*'
 
