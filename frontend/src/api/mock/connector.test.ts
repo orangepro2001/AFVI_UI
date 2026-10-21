@@ -25,6 +25,8 @@ describe('createMockConnector', () => {
     })
     expect(await api.checkMachinePath('/home/afvi')).toEqual({ ok: true, message: '' })
     expect(await api.checkMachinePath('C:\\x')).toEqual({ ok: true, message: '' })
+    expect(await api.checkMachinePath('\\\\192.168.1.63')).toEqual({ ok: true, message: '' })
+    expect(await api.checkMachinePath('\\\\host\\share')).toEqual({ ok: true, message: '' })
     expect(await api.checkMachinePath('D:/x')).toEqual({ ok: true, message: '' })
   })
 

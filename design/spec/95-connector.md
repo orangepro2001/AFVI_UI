@@ -35,13 +35,21 @@
 | 空 | `path is empty` |
 | 不是绝对路径（`filepath.IsAbs`） | `path must be absolute` |
 | 不存在 | `folder not found` |
+| 没有权限 | `access denied` |
+| 其他系统错误（例如路径中间有文件、共享名不存在、用户名密码错） | `cannot open folder: <系统给的文字>` |
 | 存在但不是目录 | `not a folder` |
 | 缺 `PxInventory` 目录 | `PxInventory is missing` |
 | 缺 `PxRepository` 目录 | `PxRepository is missing` |
 | 两个都缺 | `PxInventory and PxRepository are missing` |
 | 都在 | `OK: true`，`Message` 为空 |
 
-`PxInventory` / `PxRepository` 必须是**目录**（同名文件不算）。不检查 `INSPECT_SPEC`：`inventory.Open` 打不开时会在读数据时报错。
+`PxInventory` / `PxRepository` 必须是**目录**（同名文件不算）。
+
+**网络路径（SMB）：** `\\服务器\共享\目录` 这类 UNC 路径和普通路径一样可用（用的是当前 Windows 登录会话已有的凭据，程序不保存用户名密码）。**UNC 服务器根**（`\\192.168.1.63`、`\\192.168.1.63\`、`//192.168.1.63/`）在 Windows 的文件接口里不是目录，而是该服务器的共享列表，`stat` 会失败（`The specified path is invalid.`）。当 `PxInventory` 和 `PxRepository` 本身就是这台服务器上的两个共享时（`\\服务器\PxInventory`、`\\服务器\PxRepository`），服务器根就是“直接包含这两个文件夹”的那一级，所以在 Windows 上服务器根**被接受**：不对根做 `stat` 和绝对路径判断，只检查两个共享。先 `stat` `\\服务器\PxInventory`，是“不存在”（Windows 的 `The network path was not found.`，服务器不可达或主机名不对）→ `network path not found`；共享不存在（`The network name cannot be found.`）按缺失处理。非 Windows 上不接受服务器根（`\\host` 不是绝对路径）。选择框（Browse）选不到服务器根，只能手动输入。
+
+保存的路径用 `connector.Normalize`：trim 后 `filepath.Clean`，UNC 服务器根统一成 `\\host`（去掉末尾分隔符、`/` 换成 `\`）。
+
+不检查 `INSPECT_SPEC`：`inventory.Open` 打不开时会在读数据时报错。
 
 ## `connector.Hub`
 
@@ -56,7 +64,7 @@ func (h *Hub) Inventory() (*inventory.Service, error) // 当前主机的 Service
 
 - 配置第一次用到时从 Store 读入并缓存在内存里（Hub 是唯一的写入者）。
 - `Save` 规则（任何一条不满足：不保存任何东西，返回带主机名的错误，如 `FM2: PxRepository is missing`）：
-  - `in.Machines` 里每个 id 必须在 `Machines` 里（否则 `unknown machine "X"`）；路径空 → 清掉该主机，非空 → `Check` 必须 OK。`in.Machines` 没提到的主机保持原路径。保存的路径用 `filepath.Clean(strings.TrimSpace(path))`。
+  - `in.Machines` 里每个 id 必须在 `Machines` 里（否则 `unknown machine "X"`）；路径空 → 清掉该主机，非空 → `Check` 必须 OK。`in.Machines` 没提到的主机保持原路径。保存的路径用 `Normalize(path)`（见上）。
   - `in.Active` 必须是一台**有路径**的主机（`FM2 has no folder`）；只有在保存之后三台都没有路径时才允许 `Active == ""`，否则空的 Active 报错 `choose the host to read`。
   - 路径或 Active 变了就丢掉已打开的 Service（下一次 `Inventory()` 重新打开，当前 model 回到默认）；没变就保留（不丢用户选的 model）。
 - `Inventory()`：没有 Active → `ErrNotConfigured`（`connector: no host is configured`）；Active 的路径检查不过 → `<ID>: <Message>`；否则 `inventory.Open(filepath.Join(path, "PxInventory"))`，成功就缓存（键 = Active + 路径）。打开失败不缓存，下次再试。

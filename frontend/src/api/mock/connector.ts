@@ -12,7 +12,10 @@ const MACHINES: MachineId[] = ['FM1', 'FM2', 'BM']
 function check(path: string): PathCheck {
   const trimmed = path.trim()
   if (trimmed === '') return { ok: false, message: 'path is empty' }
-  const absolute = trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed)
+  // A UNC path (\\server, \\server\share) counts too: the Go side accepts a server whose shares are
+  // PxInventory and PxRepository.
+  const absolute =
+    trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed) || /^\\\\[^\\/]/.test(trimmed)
   if (!absolute) return { ok: false, message: 'path must be absolute' }
   // The mock has no folders to look at: an absolute path passes.
   return { ok: true, message: '' }

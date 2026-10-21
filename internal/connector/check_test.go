@@ -3,6 +3,7 @@ package connector
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -75,5 +76,108 @@ func TestCheck(t *testing.T) {
 				t.Fatalf("Message = %q want %q", got.Message, c.msg)
 			}
 		})
+	}
+}
+
+func TestUncServer(t *testing.T) {
+	cases := []struct {
+		path string
+		want string
+		ok   bool
+	}{
+		{`\\192.168.1.63`, `\\192.168.1.63`, true},
+		{`\\192.168.1.63\`, `\\192.168.1.63`, true},
+		{`//host/`, `\\host`, true},
+		{`//host`, `\\host`, true},
+		{`\\host\\`, `\\host`, true},
+		{`\\host\share`, "", false},
+		{`\\host\share\dir`, "", false},
+		{`\\`, "", false},
+		{`\\\host`, "", false},
+		{`\\.\C:`, "", false},
+		{`\\?\C:\x`, "", false},
+		{`C:\x`, "", false},
+		{`/abs/path`, "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		got, ok := uncServer(c.path)
+		if ok != c.ok || got != c.want {
+			t.Errorf("uncServer(%q) = %q, %v want %q, %v", c.path, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestCheckUNCServerRoot(t *testing.T) {
+	old := onWindows
+	t.Cleanup(func() { onWindows = old })
+
+	// On Windows the server root is not stat-ed (it is no directory there); only its shares
+	// PxInventory and PxRepository are looked at. No such server here, so it cannot be reached.
+	onWindows = true
+	got := Check(`\\no-such-server-xyz`)
+	if got.OK || got.Message != "network path not found" {
+		t.Fatalf("Check = %+v", got)
+	}
+
+	if runtime.GOOS == "linux" {
+		onWindows = false
+		got = Check(`\\no-such-server-xyz`)
+		if got.Message != "path must be absolute" {
+			t.Fatalf("not on Windows: Check = %+v", got)
+		}
+	}
+}
+
+func TestNormalize(t *testing.T) {
+	old := onWindows
+	t.Cleanup(func() { onWindows = old })
+
+	dir := t.TempDir()
+	if got := Normalize("  " + filepath.Join(dir, "a", "..") + string(filepath.Separator) + " "); got != dir {
+		t.Errorf("Normalize(dir/a/../) = %q want %q", got, dir)
+	}
+
+	onWindows = true
+	for _, in := range []string{`\\host`, `\\host\`, `//host/`, "  //host  "} {
+		if got := Normalize(in); got != `\\host` {
+			t.Errorf("Normalize(%q) = %q want %q", in, got, `\\host`)
+		}
+	}
+	onWindows = false
+	if runtime.GOOS == "linux" {
+		if got := Normalize(`//host/`); got != "/host" {
+			t.Errorf("Normalize(//host/) off Windows = %q want /host", got)
+		}
+	}
+}
+
+func TestCheckStatErrors(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("uses POSIX error codes")
+	}
+
+	// A path below a regular file: neither "not found" nor a permission problem, so the message
+	// carries the system's text.
+	file := filepath.Join(t.TempDir(), "plain.txt")
+	writeFile(t, file, "x")
+	got := Check(filepath.Join(file, "sub"))
+	if got.OK || got.Message != "cannot open folder: not a directory" {
+		t.Errorf("below a file: Check = %+v", got)
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	parent := t.TempDir()
+	child := filepath.Join(parent, "child")
+	mkdir(t, child)
+	if err := os.Chmod(parent, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+	got = Check(child)
+	if got.OK || got.Message != "access denied" {
+		t.Errorf("unreadable parent: Check = %+v", got)
 	}
 }

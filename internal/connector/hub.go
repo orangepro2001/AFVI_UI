@@ -102,7 +102,7 @@ func (h *Hub) Save(in SaveInput) (Config, error) {
 		if check := Check(trimmed); !check.OK {
 			return h.configLocked(), fmt.Errorf("%s: %s", mp.ID, check.Message)
 		}
-		paths[mp.ID] = filepath.Clean(trimmed)
+		paths[mp.ID] = Normalize(trimmed)
 	}
 
 	anyPath := false
