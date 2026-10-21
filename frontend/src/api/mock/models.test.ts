@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createModels } from './models'
+import { createMockApi } from './index'
+import { createActiveModel, createModels } from './models'
 
 describe('createModels', () => {
   it('returns 64 models', () => {
@@ -68,5 +69,35 @@ describe('createModels', () => {
     const b = createModels()
     expect(a).not.toBe(b)
     expect(a).toEqual(b)
+  })
+})
+
+describe('createActiveModel', () => {
+  it('removes the trailing revision from the base', () => {
+    const model = createActiveModel('TEST1020-00')
+    expect(model.name).toBe('TEST1020-00')
+    expect(model.base).toBe('TEST1020')
+    expect(model.resolution).toBe('2.0')
+    expect(model.surface).toBe('Top')
+  })
+
+  it('keeps a name without a revision as the base', () => {
+    expect(createActiveModel('ABC').base).toBe('ABC')
+  })
+})
+
+describe('createMockApi active model', () => {
+  it('selects a model and reports it back', async () => {
+    const api = createMockApi({ live: false })
+    const before = await api.getActiveModel()
+    expect(before.name).toBe('TEST1020-00')
+
+    const selected = await api.selectModel('21csp043-09')
+    expect(selected.name).toBe('21csp043-09')
+    expect(selected.base).toBe('21csp043')
+
+    const after = await api.getActiveModel()
+    expect(after.name).toBe('21csp043-09')
+    expect(after.base).toBe('21csp043')
   })
 })

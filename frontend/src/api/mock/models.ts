@@ -1,4 +1,4 @@
-import type { ModelEntry } from '../types'
+import type { ActiveModel, ModelEntry } from '../types'
 
 /** The 12 rows of the reference design, read off the "Choose Model Names" dialog. */
 const HEAD: [string, string, string][] = [
@@ -70,4 +70,14 @@ export function createModels(): ModelEntry[] {
 
   void FAMILIES
   return models
+}
+
+/** The model the mock loads: its base is the name without the trailing `-NN` revision. */
+export function createActiveModel(name: string): ActiveModel {
+  return {
+    name,
+    base: name.replace(/-\d{2}$/, ''),
+    resolution: '2.0',
+    surface: 'Top',
+  }
 }

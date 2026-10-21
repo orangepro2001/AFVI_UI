@@ -5,6 +5,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
+import type { ModelEntry } from '@/api/types'
+import ModelSelectDialog from '@/features/dialogs/ModelSelectDialog.vue'
 import { useAppStore } from '@/stores/app'
 import AppShell from './AppShell.vue'
 
@@ -97,6 +99,29 @@ describe('AppShell', () => {
 
     expect(app.runWithContext(() => useAppStore()).modelOpen).toBe(true)
     expect(document.body.textContent).toContain('Choose Model Names')
+  })
+
+  it('loads the model the model dialog applies', async () => {
+    const { wrapper, app } = await setup()
+    const store = app.runWithContext(() => useAppStore())
+    await store.load()
+
+    store.modelOpen = true
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    const entry: ModelEntry = {
+      index: '02',
+      created: '2026-05-04 11:28:12',
+      name: '21csp043-09',
+      state: '',
+      resolution: '2.0',
+    }
+    wrapper.findComponent(ModelSelectDialog).vm.$emit('apply', entry)
+    await flushPromises()
+
+    expect(store.model?.name).toBe('21csp043-09')
+    expect(store.model?.base).toBe('21csp043')
   })
 
   it('opens the grab dialog from the rail', async () => {

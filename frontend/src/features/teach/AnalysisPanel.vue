@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cn } from 'cn'
-import { computed, type HTMLAttributes } from 'vue'
+import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import type { AnalysisRow } from '@/api/types'
 import ScrollBar from '@/components/app/ScrollBar.vue'
 import ToggleSwitch from '@/components/app/ToggleSwitch.vue'
@@ -47,6 +47,16 @@ const bodies = computed<{ id: AnalysisTableId; rows: AnalysisRow[] }[]>(() => [
 function bodyTop(id: AnalysisTableId) {
   return `${HEAD_TOP[id] + HEAD_HEIGHT}px`
 }
+
+/** The box that scrolls the rows of the channel table; the horizontal ScrollBar takes the bottom. */
+const channelBody = ref<HTMLElement | null>(null)
+
+watch(
+  () => props.tables.channel,
+  () => {
+    if (channelBody.value) channelBody.value.scrollTop = 0
+  },
+)
 
 function rowTop(index: number) {
   return `${index * ROW}px`
@@ -127,32 +137,50 @@ function valueClass(id: AnalysisTableId) {
     <div
       v-for="table in bodies"
       :key="table.id"
+      :ref="
+        (el) => {
+          if (table.id === 'channel') channelBody = el as HTMLElement | null
+        }
+      "
       :data-table="table.id"
-      class="absolute left-0 w-[279px]"
-      :style="{ top: bodyTop(table.id) }"
+      :class="
+        table.id === 'channel'
+          ? 'absolute left-0 w-[279px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          : 'absolute left-0 w-[279px]'
+      "
+      :style="
+        table.id === 'channel'
+          ? { top: bodyTop(table.id), bottom: '20px' }
+          : { top: bodyTop(table.id) }
+      "
     >
       <div
-        v-for="(row, index) in table.rows"
-        :key="row.no"
-        :data-row="row.no"
-        class="absolute left-0 flex w-[279px] items-center text-3xs"
-        :style="rowStyle(index)"
+        :class="table.id === 'channel' ? 'relative w-[279px]' : 'contents'"
+        :style="table.id === 'channel' ? { height: `${table.rows.length * ROW}px` } : undefined"
       >
-        <div class="w-[38px] shrink-0 text-center text-analysis-no">{{ row.no }}</div>
-        <div class="w-[148px] shrink-0 truncate pl-1" :class="nameClass(row)">
-          {{ row.name }}
-        </div>
-        <div class="flex w-[74px] shrink-0 items-center" :class="valueClass(table.id)">
-          <ToggleSwitch
-            v-if="typeof row.value === 'boolean'"
-            variant="table"
-            :model-value="row.value"
-            @update:model-value="emit('toggle', table.id, row.no)"
-          />
-          <span v-else class="w-full truncate text-analysis-value">{{ row.value }}</span>
-        </div>
-        <div class="w-[19px] shrink-0 pl-1 text-analysis-value">
-          <template v-if="table.id === 'channel'">{{ row.min ?? '' }}</template>
+        <div
+          v-for="(row, index) in table.rows"
+          :key="row.no"
+          :data-row="row.no"
+          class="absolute left-0 flex w-[279px] items-center text-3xs"
+          :style="rowStyle(index)"
+        >
+          <div class="w-[38px] shrink-0 text-center text-analysis-no">{{ row.no }}</div>
+          <div class="w-[148px] shrink-0 truncate pl-1" :class="nameClass(row)">
+            {{ row.name }}
+          </div>
+          <div class="flex w-[74px] shrink-0 items-center" :class="valueClass(table.id)">
+            <ToggleSwitch
+              v-if="typeof row.value === 'boolean'"
+              variant="table"
+              :model-value="row.value"
+              @update:model-value="emit('toggle', table.id, row.no)"
+            />
+            <span v-else class="w-full truncate text-analysis-value">{{ row.value }}</span>
+          </div>
+          <div class="w-[19px] shrink-0 pl-1 text-analysis-value">
+            <template v-if="table.id === 'channel'">{{ row.min ?? '' }}</template>
+          </div>
         </div>
       </div>
     </div>

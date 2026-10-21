@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { onScopeDispose, ref } from 'vue'
 import { useApi } from '@/api'
-import type { AppInfo, SessionInfo } from '@/api/types'
+import type { ActiveModel, AppInfo, SessionInfo } from '@/api/types'
 
 export type MachineStatus = 'ready'
 
@@ -20,6 +20,8 @@ export const useAppStore = defineStore('app', () => {
   const info = ref<AppInfo | null>(null)
   const user = ref({ name: 'Admin', since: new Date(2026, 9, 20, 16, 35, 23) })
   const session = ref<SessionInfo | null>(null)
+  /** The loaded model; its name is the MODEL box of the workbench pages. */
+  const model = ref<ActiveModel | null>(null)
   /** The "Log in/out" dialog (the User button of the rail). */
   const loginOpen = ref(false)
   /** The "Choose Model Names" dialog (the Model button of the rail). */
@@ -38,10 +40,20 @@ export const useAppStore = defineStore('app', () => {
   const status = ref<MachineStatus>('ready')
 
   async function load() {
-    const [appInfo, sessionInfo] = await Promise.all([api.getAppInfo(), api.getSession()])
+    const [appInfo, sessionInfo, activeModel] = await Promise.all([
+      api.getAppInfo(),
+      api.getSession(),
+      api.getActiveModel(),
+    ])
     info.value = appInfo
     session.value = sessionInfo
     user.value = { name: sessionInfo.current, since: parseSessionTime(sessionInfo.since) }
+    model.value = activeModel
+  }
+
+  /** Loads another model into the backend; the MODEL boxes and TEACH follow it. */
+  async function selectModel(name: string) {
+    model.value = await api.selectModel(name)
   }
 
   // A timer that outlives the store would write to a store nobody reads any more.
@@ -60,6 +72,7 @@ export const useAppStore = defineStore('app', () => {
     info,
     user,
     session,
+    model,
     loginOpen,
     modelOpen,
     grabOpen,
@@ -69,6 +82,7 @@ export const useAppStore = defineStore('app', () => {
     busy,
     status,
     load,
+    selectModel,
     runBusy,
   }
 })

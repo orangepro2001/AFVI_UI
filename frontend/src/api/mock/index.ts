@@ -5,7 +5,7 @@ import { createCalibrationSnapshot } from './calibration'
 import { createConfig } from './config'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
 import { createMedianSetup } from './median'
-import { createModels } from './models'
+import { createActiveModel, createModels } from './models'
 import { createDefects } from './review'
 import { createSession } from './session'
 import { createSettingsSnapshot } from './settings'
@@ -58,6 +58,7 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
   const random = createRandom(seed)
   const snapshot = createHomeSnapshot(random)
   let stats = snapshot.stats
+  let activeModel = createActiveModel('TEST1020-00')
 
   return {
     async getAppInfo() {
@@ -86,6 +87,15 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
 
     async getModels() {
       return createModels()
+    },
+
+    async getActiveModel() {
+      return { ...activeModel }
+    },
+
+    async selectModel(name) {
+      activeModel = createActiveModel(name)
+      return { ...activeModel }
     },
 
     async getDefects() {

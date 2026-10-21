@@ -4,6 +4,8 @@ import { createApp } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { apiKey, type ApiClient } from '@/api/client'
 import { createMockApi } from '@/api/mock'
+import type { SpecNode, TeachSnapshot } from '@/api/types'
+import { useAppStore } from './app'
 import { useTeachStore } from './teach'
 
 function storeWith(api: ApiClient = createMockApi({ live: false })) {
@@ -13,6 +15,29 @@ function storeWith(api: ApiClient = createMockApi({ live: false })) {
   app.use(pinia)
   setActivePinia(pinia)
   return app.runWithContext(() => useTeachStore())
+}
+
+/** A snapshot with one checked node whose three lights differ. */
+function lightSnapshot(): TeachSnapshot {
+  const node: SpecNode = {
+    id: 'u-lights',
+    name: 'Lights',
+    tone: 'green',
+    checked: false,
+    lightChecked: [true, false, true],
+  }
+  const set = {
+    globalAlign: [],
+    srAlign: [],
+    overlay: { mk: true, ac: false, ic: false, sk: false },
+    tree: [node],
+  }
+  const image = { url: 'x.png', width: 10, height: 10 }
+  return {
+    unit: set,
+    dummy: { ...set },
+    alignImages: { metal: image, sr: image, dmg: image },
+  }
 }
 
 describe('teach store', () => {
@@ -59,6 +84,25 @@ describe('teach store', () => {
     expect(store.overlay!.dummy.ac).toBe(before)
   })
 
+  it('keeps one checkbox table per light and toggles only the selected one', async () => {
+    const mock = createMockApi({ live: false })
+    const store = storeWith({ ...mock, getTeach: async () => lightSnapshot() })
+    await store.load()
+
+    expect(store.checked['u-lights']).toBe(false)
+    store.light = 1
+    expect(store.checked['u-lights']).toBe(true)
+    store.light = 3
+    expect(store.checked['u-lights']).toBe(true)
+
+    store.toggleChecked('u-lights')
+    expect(store.checked['u-lights']).toBe(false)
+    store.light = 1
+    expect(store.checked['u-lights']).toBe(true)
+    store.light = 2
+    expect(store.checked['u-lights']).toBe(false)
+  })
+
   it('requests the snapshot once', async () => {
     const mock = createMockApi({ live: false })
     const getTeach = vi.fn(mock.getTeach)
@@ -66,6 +110,56 @@ describe('teach store', () => {
 
     await store.load()
     await store.load()
+    expect(getTeach).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('teach store model switch', () => {
+  it('reloads the tree when another model is loaded', async () => {
+    const mock = createMockApi({ live: false })
+    const getTeach = vi.fn(mock.getTeach)
+    const app = createApp({}).provide(apiKey, { ...mock, getTeach })
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+
+    const appStore = app.runWithContext(() => useAppStore())
+    const store = app.runWithContext(() => useTeachStore())
+
+    await appStore.load()
+    expect(getTeach).toHaveBeenCalledTimes(0)
+
+    await store.load()
+    expect(getTeach).toHaveBeenCalledTimes(1)
+
+    app.runWithContext(() => store.select('u-au-cpad'))
+    await flushPromises()
+    expect(store.selectedId).toBe('u-au-cpad')
+
+    await appStore.selectModel('another-01')
+    await flushPromises()
+
+    expect(getTeach).toHaveBeenCalledTimes(2)
+    expect(store.selectedId).toBeNull()
+    expect(store.snapshot).not.toBeNull()
+  })
+
+  it('does not reload when the first model arrives', async () => {
+    const mock = createMockApi({ live: false })
+    const getTeach = vi.fn(mock.getTeach)
+    const app = createApp({}).provide(apiKey, { ...mock, getTeach })
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+
+    const appStore = app.runWithContext(() => useAppStore())
+    const store = app.runWithContext(() => useTeachStore())
+    await store.load()
+
+    await appStore.load()
+    await flushPromises()
+
+    expect(appStore.model).not.toBeNull()
     expect(getTeach).toHaveBeenCalledTimes(1)
   })
 })

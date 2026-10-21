@@ -38,6 +38,22 @@ describe('app store', () => {
     expect(since.getSeconds()).toBe(23)
   })
 
+  it('loads the active model', async () => {
+    const store = await withStore()
+    expect(store.model).toBeNull()
+    await store.load()
+    expect(store.model?.name).toBe('TEST1020-00')
+    expect(store.model?.base).toBe('TEST1020')
+  })
+
+  it('switches the model with selectModel', async () => {
+    const store = await withStore()
+    await store.load()
+    await store.selectModel('21csp043-09')
+    expect(store.model?.name).toBe('21csp043-09')
+    expect(store.model?.base).toBe('21csp043')
+  })
+
   it('starts with the other dialogs and the overlay closed', async () => {
     const store = await withStore()
     expect(store.modelOpen).toBe(false)

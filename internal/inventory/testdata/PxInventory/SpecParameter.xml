@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel>
+  <stringpack LangCode="1">
+    <string ParamKey="101" Text="마스크 검사(밝음)"/>
+    <string ParamKey="102" Text="마스크 검사(어두움)"/>
+    <string ParamKey="500" Text=" 마스크 조정 "/>
+  </stringpack>
+  <stringpack LangCode="0">
+    <string ParamKey="101" Text="Mask Inspection(Bright)"/>
+    <string ParamKey="102" Text="Mask Inspection(Dark)"/>
+    <string ParamKey="500" Text=" Adjust Mask "/>
+    <string ParamKey="600" Text="Adjust Inner Chain(Align)"/>
+    <string ParamKey="1009" Text="Dark Defect(TH)"/>
+    <string ParamKey="1024" Text="Min Defect Size(Pixel)"/>
+  </stringpack>
+</pixel>

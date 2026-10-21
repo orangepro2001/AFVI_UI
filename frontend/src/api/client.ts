@@ -1,6 +1,7 @@
 import type { InjectionKey } from 'vue'
 import { inject } from 'vue'
 import type {
+  ActiveModel,
   AppInfo,
   CalibrationSnapshot,
   ConfigGroup,
@@ -35,6 +36,10 @@ export interface ApiClient {
   getSession(): Promise<SessionInfo>
   /** The models of the "Choose Model Names" dialog. */
   getModels(): Promise<ModelEntry[]>
+  /** The loaded model (its name is the MODEL box of the workbench pages). */
+  getActiveModel(): Promise<ActiveModel>
+  /** Loads another model; the specification tree and tables of TEACH follow it. */
+  selectModel(name: string): Promise<ActiveModel>
   /** The defects of the strip on the REVIEW page (empty until an inspection has run). */
   getDefects(): Promise<DefectRow[]>
   /** The light strip picture and the 20 channels of the CALIBRATE page. */

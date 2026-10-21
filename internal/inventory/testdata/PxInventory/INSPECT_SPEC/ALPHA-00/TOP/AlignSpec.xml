@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel Version="1.0">
+  <AlignPoint/>
+  <GlobalAlign AlignPoint="1" Light="0" L1Channel="0" L2Channel="1" L3Channel="2">
+    <Param ID="0" CellNO="0"/>
+  </GlobalAlign>
+  <SRAlign Light="2" Channel="4">
+  </SRAlign>
+</pixel>

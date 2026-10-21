@@ -10,8 +10,10 @@ import NetworkPanel from '@/features/home/NetworkPanel.vue'
 import ProductInfoPanel from '@/features/home/ProductInfoPanel.vue'
 import StoragePanel from '@/features/home/StoragePanel.vue'
 import WorkStatusPanel from '@/features/home/WorkStatusPanel.vue'
+import { useAppStore } from '@/stores/app'
 import { useMachineStore } from '@/stores/machine'
 
+const app = useAppStore()
 const machine = useMachineStore()
 </script>
 
@@ -20,7 +22,7 @@ const machine = useMachineStore()
     <div class="flex min-w-0 flex-1 flex-col gap-[3px]">
       <ModelBar
         class="mb-[1px]"
-        :model="machine.snapshot.model"
+        :model="app.model?.base ?? machine.snapshot.model"
         :lot="machine.snapshot.lot"
         :dmg="machine.snapshot.dmg"
       />

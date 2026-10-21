@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel Version="1.0">
+  <GPNODE ID="1">
+    <PNODE ID="1" NodeCheck="1">
+      <CNODE ID="10" NodeCheck="0"/>
+      <CNODE ID="11" NodeCheck="0"/>
+      <CNODE ID="12" NodeCheck="0"/>
+    </PNODE>
+    <PNODE ID="2">
+      <CNODE ID="22" NodeCheck="0"/>
+    </PNODE>
+    <PNODE ID="3">
+      <CNODE ID="22" NodeCheck="1">
+        <MASTER ParamKey="100" ControlType="0" SpecGroup="0" Val="0"/>
+        <!-- comment between rows -->
+        <MASTER ParamKey="101" ControlType="1" SpecGroup="1" Val="1"/>
+        <SUBMASTER ParamKey="600" ControlType="0" SpecGroup="3" Val="-3"/>
+        <MASTER ParamKey="102" ControlType="1" SpecGroup="2" Val="0"/>
+        <MASTER ParamKey="500" ControlType="0" SpecGroup="0" Val="-2.5"/>
+        <INSPECTION ParamKey="1009" ControlType="0" SpecGroup="2" ValR="20" MinValR="5" ValG="25.5" MinValG="6" ValB="-0.0001" MinValB="0"/>
+        <INSPECTION ParamKey="777" ControlType="0" SpecGroup="4" ValR="1" MinValR="1" ValG="1" MinValG="1" ValB="1" MinValB="1"/>
+      </CNODE>
+    </PNODE>
+    <PNODE ID="5">
+      <CNODE ID="51" NodeCheck="0"/>
+    </PNODE>
+  </GPNODE>
+  <GPNODE ID="2">
+    <PNODE ID="2">
+      <CNODE ID="22" NodeCheck="1"/>
+    </PNODE>
+  </GPNODE>
+</pixel>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel Version="1.0">
+  <GPNODE ID="1">
+    <PNODE ID="2" NodeCheck="0">
+      <CNODE ID="22" NodeCheck="1"/>
+    </PNODE>
+  </GPNODE>
+</pixel>

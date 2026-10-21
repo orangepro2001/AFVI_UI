@@ -20,6 +20,7 @@ cd frontend && pnpm check             # 类型、ESLint、Prettier、Vitest
 scripts/snap.sh --route /teach --query freeze   # 无头 Chrome 截图（需 dev server 在跑）
 go run scripts/diffgrid.go ours.png ref.png dx dy 40 [x y w h]   # 与设计图的差异热力图
 scripts/bindings.sh [--check]
+go run scripts/devapi.go             # 开发用：让浏览器里的前端读 Go 解析的 PxInventory（?api=http://127.0.0.1:8099）
 ```
 
 ## 约定

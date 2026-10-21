@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel Version="1.0">
+  <system>
+  <gpnode ID="1">
+    <pnode ID="1">
+      <cnode ID="10"/>
+      <cnode ID="11"/>
+      <cnode ID="12"/>
+    </pnode>
+    <pnode ID="2">
+      <cnode ID="22"/>
+    </pnode>
+    <pnode ID="3">
+      <cnode ID="22"/>
+    </pnode>
+    <pnode ID="5">
+      <cnode ID="51"/>
+    </pnode>
+    <pnode ID="6">
+      <cnode ID="93"/>
+    </pnode>
+  </gpnode>
+  <gpnode ID="2">
+    <pnode ID="2">
+      <cnode ID="22"/>
+    </pnode>
+    <pnode ID="5">
+      <cnode ID="51"/>
+      <cnode ID="99"/>
+    </pnode>
+  </gpnode>
+  </system>
+</pixel>

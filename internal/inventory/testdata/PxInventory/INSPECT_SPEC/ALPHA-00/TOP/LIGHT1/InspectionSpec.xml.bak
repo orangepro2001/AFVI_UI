@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel Version="1.0">
+  <GPNODE ID="1">
+    <PNODE ID="3">
+      <CNODE ID="22" NodeCheck="0">
+        <MASTER ParamKey="101" ControlType="1" SpecGroup="0" Val="0"/>
+      </CNODE>
+    </PNODE>
+  </GPNODE>
+</pixel>

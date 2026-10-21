@@ -10,6 +10,7 @@ import type {
   SpecSet,
   TeachSnapshot,
 } from '@/api/types'
+import { useAppStore } from './app'
 import type { LightId } from './workbench'
 
 /** Unit: the specification of the strip's unit; Dummy: that of the dummy area around it. */
@@ -48,6 +49,7 @@ export function flattenSpec(nodes: SpecNode[]): SpecNode[] {
  */
 export const useTeachStore = defineStore('teach', () => {
   const api = useApi()
+  const app = useAppStore()
 
   const snapshot = ref<TeachSnapshot | null>(null)
   const section = ref<TeachSection>('spec')
@@ -56,7 +58,9 @@ export const useTeachStore = defineStore('teach', () => {
   const light = ref<LightId>(2)
   const channel = ref<AnalysisChannel>('red')
 
-  const checked = ref<Record<string, boolean>>({})
+  /** The checkboxes of every node, one table per light: the panel edits the selected light's. */
+  const checkedByLight = ref<Record<LightId, Record<string, boolean>>>({ 1: {}, 2: {}, 3: {} })
+  const checked = computed(() => checkedByLight.value[light.value])
   const overlay = ref<Record<SpecMode, SpecSet['overlay']> | null>(null)
 
   const spec = computed<SpecSet | null>(() => snapshot.value?.[mode.value] ?? null)
@@ -97,20 +101,45 @@ export const useTeachStore = defineStore('teach', () => {
   // renders a selection of the other tree in between.
   watch(mode, () => select(null), { flush: 'sync' })
 
+  /** Answers of getTeach come back out of order: only the newest one may land. */
+  let loadRequest = 0
+
   /** Loads the snapshot once; later calls return at once. */
   async function load() {
     if (snapshot.value) return
+    const ticket = ++loadRequest
     const next = await api.getTeach()
-    snapshot.value = next
-    const boxes: Record<string, boolean> = {}
+    if (ticket !== loadRequest) return
+    const boxes: Record<LightId, Record<string, boolean>> = { 1: {}, 2: {}, 3: {} }
     for (const set of [next.unit, next.dummy]) {
       for (const node of flattenSpec(set.tree)) {
-        if (node.checked !== undefined) boxes[node.id] = node.checked
+        if (node.checked === undefined) continue
+        for (const lightId of [1, 2, 3] as const) {
+          boxes[lightId][node.id] = node.lightChecked?.[lightId - 1] ?? node.checked
+        }
       }
     }
-    checked.value = boxes
+    snapshot.value = next
+    checkedByLight.value = boxes
     overlay.value = { unit: { ...next.unit.overlay }, dummy: { ...next.dummy.overlay } }
   }
+
+  /** Another model was loaded: drop everything and read the new XML. */
+  async function reload() {
+    snapshot.value = null
+    checkedByLight.value = { 1: {}, 2: {}, 3: {} }
+    overlay.value = null
+    select(null)
+    await load()
+  }
+
+  // The first model (null -> a value) is the one `load()` reads itself; later changes reload.
+  watch(
+    () => app.model?.name,
+    (name, previous) => {
+      if (previous !== undefined && name !== previous) void reload()
+    },
+  )
 
   /** Picks a node; picking the selected node again keeps it, null clears the selection. */
   function select(id: string | null) {
@@ -139,7 +168,12 @@ export const useTeachStore = defineStore('teach', () => {
   }
 
   function toggleChecked(id: string) {
-    if (id in checked.value) checked.value = { ...checked.value, [id]: !checked.value[id] }
+    const table = checkedByLight.value[light.value]
+    if (!(id in table)) return
+    checkedByLight.value = {
+      ...checkedByLight.value,
+      [light.value]: { ...table, [id]: !table[id] },
+    }
   }
 
   function toggleOverlay(key: OverlayKey) {

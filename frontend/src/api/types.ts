@@ -178,6 +178,11 @@ export interface SpecNode {
   tone: SpecTone
   /** undefined: the node has no checkbox. */
   checked?: boolean
+  /**
+   * The box of each Light tab (index 0 = Light-1) when the machine keeps one per light; without
+   * it `checked` holds for all three lights. `checked` is the value of Light-2.
+   */
+  lightChecked?: boolean[]
   /** Set on the nodes whose selection puts that align picture into the viewer. */
   align?: AlignKind
   children?: SpecNode[]
@@ -319,6 +324,17 @@ export interface SettingsSnapshot {
 }
 
 // --- Models ----------------------------------------------------------------------------------
+
+/** The model the UI works with: the folder of INSPECT_SPEC that is loaded. */
+export interface ActiveModel {
+  /** "6ST2001Q01-00" */
+  name: string
+  /** The name without the revision: "6ST2001Q01". */
+  base: string
+  /** "2.0" */
+  resolution: string
+  surface: 'Top' | 'Bottom'
+}
 
 /** One row of the "Choose Model Names" dialog. */
 export interface ModelEntry {

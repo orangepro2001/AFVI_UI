@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pixel>
+  <gpnode ID="1">
+    <node ID="1" Name="Unit" Color="188,143,143"/>
+  </gpnode>
+  <gpnode ID="2">
+    <node ID="2" Name="Dummy" Color="188,143,143"/>
+  </gpnode>
+  <pnode ID="1">
+    <node ID="1" Name="Align / ROI" Color="188,143,143"/>
+  </pnode>
+  <pnode ID="2">
+    <node ID="2" Name="AU" Color="255,201,14"/>
+  </pnode>
+  <pnode ID="3">
+    <node ID="3" Name="OSP" Color="255,201,14"/>
+  </pnode>
+  <pnode ID="5">
+    <node ID="5" Name="NonMetal" Color="0,160,0"/>
+  </pnode>
+  <pnode ID="6">
+    <node ID="6" Name="ETC" Color="102,51,255"/>
+  </pnode>
+  <cnode ID="10">
+    <node ID="10" Name="Metal" Color="192,192,192"/>
+  </cnode>
+  <cnode ID="11">
+    <node ID="11" Name="SR" Color="192,192,192"/>
+  </cnode>
+  <cnode ID="12">
+    <node ID="12" Name="DMG" Color="192,192,192"/>
+  </cnode>
+  <cnode ID="22">
+    <node ID="22" Name="L-Pad" Color="255,201,14"/>
+  </cnode>
+  <cnode ID="51">
+    <node ID="51" Name="Pattern1" Color="0,160,0"/>
+  </cnode>
+  <cnode ID="93">
+    <node ID="93" Name="User Mask" Color="102,51,255"/>
+  </cnode>
+</pixel>

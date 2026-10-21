@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useApi } from '@/api'
+import type { ModelEntry } from '@/api/types'
 import LoadingOverlay from '@/components/app/LoadingOverlay.vue'
 import ConfigPanel from '@/features/dialogs/ConfigPanel.vue'
 import GenerateOptionDialog from '@/features/dialogs/GenerateOptionDialog.vue'
@@ -50,6 +51,11 @@ function onRailSelect(id: string) {
     // The other rail tools have no action yet.
   }
 }
+
+// The dialog closes itself; loading the model makes the MODEL boxes and TEACH follow it.
+function onModelApply(entry: ModelEntry) {
+  void app.selectModel(entry.name)
+}
 </script>
 
 <template>
@@ -64,7 +70,7 @@ function onRailSelect(id: string) {
         </main>
       </div>
       <LoginDialog v-model:open="app.loginOpen" />
-      <ModelSelectDialog v-model:open="app.modelOpen" />
+      <ModelSelectDialog v-model:open="app.modelOpen" @apply="onModelApply" />
       <LoadGrabDialog v-model:open="app.grabOpen" />
       <GenerateOptionDialog v-model:open="app.generateOpen" />
       <MedianDialog v-model:open="app.medianOpen" />
