@@ -11,7 +11,7 @@
 
 ## 配置文件（本地文件数据库）
 
-- 位置：`os.UserConfigDir()/AFVI-UI/connector.json`（Windows：`%AppData%\AFVI-UI\connector.json`）。`connector.DefaultFile()` 返回它；取不到配置目录时 `NewApp` 退回只在内存里保存的 Store（文件名为空）。
+- 位置：`os.UserConfigDir()/AFVI-UI/connector.json`（Windows：`%AppData%\AFVI-UI\connector.json`，资源管理器里默认看不到）。`connector.DefaultFile()` 返回它（文件夹由 `internal/appdata` 定义，与 WebView2 数据 `webview2\` 同在一处，所有版本共用）；取不到配置目录时 `NewApp` 退回只在内存里保存的 Store（文件名为空）。
 - 内容：
 
 ```json
@@ -90,7 +90,7 @@ func (h *Hub) Inventory() (*inventory.Service, error) // 当前主机的 Service
 
 ## 开发用 HTTP（`scripts/devapi.go`）
 
-- 参数：`-addr`（默认 `127.0.0.1:8099`）、`-config <文件>`（Store 文件，默认 `connector.DefaultFile()`）。**删除 `-inventory` 参数。**
+- 参数：`-addr`（默认 `127.0.0.1:8099`）、`-config <文件>`（Store 文件）。默认是仓库根目录下被 git 忽略的 `.dev/connector.json`：它不存在时，把 `design/repo/{FM1,FM2,BM}` 里通过 `connector.Check` 的目录写进去（FM1 优先为当前主机），之后可在 Connector 对话框里改。默认**从不**读写 `connector.DefaultFile()`，已安装应用的配置不会被开发工具改动。**删除 `-inventory` 参数。**
 - 路由：原来的五个 GET 不变；新增 `GET /api/GetConnector`、`GET /api/CheckMachinePath?path=`、`POST /api/SaveConnector`（请求体是 `SaveInput` 的 JSON）、`GET /api/PickFolder`（总是返回错误 `the folder dialog is only available in the app window`）。错误仍是 `{"error": "..."}` + 500。CORS 允许 `GET, POST, OPTIONS`。
 
 ## 前端契约
@@ -128,5 +128,5 @@ func (h *Hub) Inventory() (*inventory.Service, error) // 当前主机的 Service
 ## 已知限制
 
 - 切换主机后当前 model 回到那台主机的默认 model（Application.xml 的 `Model`），用户之前在另一台里选的 model 不记。
-- 保存的路径指向 Windows 盘符时只能在 Windows 上用；在 WSL 里开发用 Linux 路径（`/home/.../design/repo/FM1`）。
+- 保存的路径指向 Windows 盘符时只能在 Windows 上用；在 WSL 里开发用 Linux 路径（`/home/.../design/repo/FM1`，`scripts/devapi.go` 会自动配好）。
 - 配置文件不加密、不同步；多个应用实例同时写同一个文件时后写的覆盖先写的。

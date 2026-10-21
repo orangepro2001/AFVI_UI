@@ -11,6 +11,13 @@ node_modules/
 # Design material: the reference images are committed, the screenshots of scripts/snap.sh are not
 design/snap/
 
+# Reference data of the three hosts (FM1, FM2, BM; about 550 MB), copied by hand to every machine that
+# runs the real-data tests; the committed fixture is internal/inventory/testdata
+design/repo/
+
+# Development-only state (scripts/devapi.go keeps its connector.json here); never the installed app's
+/.dev/
+
 # Windows binaries and test binaries
 *.exe
 *.test

@@ -4,6 +4,9 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"os"
+
+	"afvi/ui/internal/appdata"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -29,6 +32,20 @@ const (
 	minHeight    = 720
 )
 
+// webviewDataDir is %AppData%\AFVI-UI\webview2, created on demand; "" (WebView2's own default)
+// when the folder cannot be created.
+func webviewDataDir() string {
+	dir, err := appdata.Path("webview2")
+	if err != nil {
+		return ""
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		log.Printf("webview2 data folder: %v", err)
+		return ""
+	}
+	return dir
+}
+
 func main() {
 	app := NewApp(version)
 
@@ -47,6 +64,9 @@ func main() {
 		Bind:             []any{app},
 		Windows: &windows.Options{
 			Theme: windows.Dark,
+			// One folder for every build: by default WebView2 uses a folder named after the exe, so
+			// each nightly would leave its own copy behind and lose the UI state.
+			WebviewUserDataPath: webviewDataDir(),
 		},
 	})
 	if err != nil {

@@ -64,6 +64,8 @@ Start-ScheduledTask -TaskName AFVI-UI-Sync   # 立刻同步一次
 Get-Content $env:LOCALAPPDATA\AFVI-UI-Sync\sync.log -Tail 20
 ```
 
+同步还会清掉旧构建留在 `%AppData%` 里的 WebView2 数据：旧版 exe 把数据放在以 exe 文件名命名的文件夹（`%AppData%\AFVI-UI-<版本>-windows-amd64.exe`，每个版本约 70 MB，界面状态也随版本丢失）。现在的 exe 固定用 `%AppData%\AFVI-UI\webview2`；同步脚本只删这个名字模式的文件夹，并且只在对应的 exe 已不在桌面、也没有同名进程在运行时才删（符号链接/联接不碰，`AFVI-UI\` 本身不碰）。升级到第一个固定路径的版本时界面状态会重置一次。
+
 更新同步脚本：再运行一次 `install.ps1`。
 
 ## 日常

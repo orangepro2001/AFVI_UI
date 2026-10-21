@@ -1,9 +1,11 @@
 //go:build ignore
 
 // devapi.go - development HTTP server that serves the Go inventory parser to the browser.
-// Run: go run scripts/devapi.go [-addr 127.0.0.1:8099] [-config <file>]
-// The host folders are configured in the Connector dialog of the app; the browser uses the same
-// configuration through ?api=http://127.0.0.1:8099.
+// Run from the repository root: go run scripts/devapi.go [-addr 127.0.0.1:8099] [-config <file>]
+// The browser reaches it through ?api=http://127.0.0.1:8099. It never touches the configuration of
+// the installed app (%AppData%\AFVI-UI): by default it keeps its own git-ignored .dev/connector.json,
+// which is filled from the reference data in design/repo/{FM1,FM2,BM} the first time. The folders can
+// be changed in the Connector dialog; -config picks another file.
 package main
 
 import (
@@ -13,24 +15,35 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"afvi/ui/internal/connector"
 )
 
+// devConfig is the development configuration file, relative to the repository root.
+const devConfig = ".dev/connector.json"
+
+// referenceRoot holds the reference data of the three hosts: design/repo/FM1, FM2 and BM.
+const referenceRoot = "design/repo"
+
 func main() {
 	addr := flag.String("addr", "127.0.0.1:8099", "listen address")
-	cfgFile := flag.String("config", "", "connector config file; empty = the default in the user config dir")
+	cfgFile := flag.String("config", "", "connector config file; empty = "+devConfig+", seeded from "+referenceRoot)
 	flag.Parse()
 
 	file := *cfgFile
+	seed := false
 	if file == "" {
-		def, err := connector.DefaultFile()
-		if err != nil {
-			log.Fatalf("connector config file: %v", err)
-		}
-		file = def
+		file = devConfig
+		seed = true
 	}
+	_, statErr := os.Stat(file)
+	fresh := errors.Is(statErr, os.ErrNotExist)
 	hub := connector.NewHub(connector.NewStore(file))
+	if seed && fresh {
+		seedFromReference(hub)
+	}
 
 	log.Printf("config: %s", file)
 	if active := hub.Config().Active; active == "" {
@@ -42,6 +55,34 @@ func main() {
 
 	http.HandleFunc("/api/", apiHandler(hub))
 	log.Fatal(http.ListenAndServe(*addr, nil))
+}
+
+// seedFromReference points every host whose reference folder exists in design/repo at it and makes
+// FM1 (else the first one found) the active host. Folders that fail the Connector check are skipped.
+func seedFromReference(hub *connector.Hub) {
+	in := connector.SaveInput{}
+	for _, id := range connector.Machines {
+		dir, err := filepath.Abs(filepath.Join(referenceRoot, id))
+		if err != nil {
+			continue
+		}
+		if check := connector.Check(dir); !check.OK {
+			log.Printf("reference %s skipped: %s (%s)", id, check.Message, dir)
+			continue
+		}
+		in.Machines = append(in.Machines, connector.MachinePath{ID: id, Path: dir})
+		if in.Active == "" {
+			in.Active = id
+		}
+	}
+	if len(in.Machines) == 0 {
+		return
+	}
+	if _, err := hub.Save(in); err != nil {
+		log.Printf("seed %s: %v", devConfig, err)
+		return
+	}
+	log.Printf("seeded %s from %s", devConfig, referenceRoot)
 }
 
 // apiHandler serves the /api/<Method> routes.

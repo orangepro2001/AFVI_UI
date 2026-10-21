@@ -1,6 +1,7 @@
 # sync.ps1 - keep the newest tested executable of the rolling "nightly" Release on this PC's desktop.
 #
 #   sync.ps1 [-Repo owner/name] [-Tag nightly] [-Dest <folder>] [-Prefix AFVI-UI-] [-Suffix -windows-amd64.exe]
+#            [-DataRoot <folder>] [-LogDir <folder>]
 #
 # What it does, every time it runs (the scheduled task from install.ps1 runs it every few minutes):
 #   1. downloads SHA256SUMS.txt of the Release (a plain file URL: no API, no token, no rate limit),
@@ -8,6 +9,10 @@
 #      SHA-256, renames it to <name> (a half-finished download is never an executable),
 #   3. deletes the older <Prefix>*<Suffix> files in -Dest, except one that is running (it stays and
 #      is removed on a later run, once it was closed). Nothing else in -Dest is ever touched.
+#   4. removes the WebView2 data folders that older builds left in -DataRoot (default %AppData%), one
+#      per exe name (%AppData%\AFVI-UI-<version>-windows-amd64.exe): only those names, only when that
+#      exe is no longer in -Dest and no process of that name runs. Current builds keep their data in
+#      the fixed %AppData%\AFVI-UI\webview2, which is never touched.
 # The Release only ever holds an executable that passed the Windows tests (docs/CI.md), so the
 # desktop never gets an untested build. A missing Release (it is replaced in a few seconds after
 # each push) is not an error. Log: %LOCALAPPDATA%\AFVI-UI-Sync\sync.log.
@@ -21,6 +26,7 @@ param(
     [string]$Dest = '',
     [string]$Prefix = 'AFVI-UI-',
     [string]$Suffix = '-windows-amd64.exe',
+    [string]$DataRoot = '',
     [string]$LogDir = ''
 )
 
@@ -29,6 +35,7 @@ $ProgressPreference = 'SilentlyContinue'   # Windows PowerShell 5.1 downloads cr
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
 
 if (-not $Dest) { $Dest = [Environment]::GetFolderPath('Desktop') }
+if (-not $DataRoot) { $DataRoot = $env:APPDATA }
 if (-not $LogDir) { $LogDir = Join-Path $env:LOCALAPPDATA 'AFVI-UI-Sync' }
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $logFile = Join-Path $LogDir 'sync.log'
@@ -64,6 +71,27 @@ function Test-InUse([string]$path) {
         if (-not $pp -or ($pp -ieq $path)) { return $true }
     }
     return $false
+}
+
+function Remove-StaleWebViewData {
+    # <DataRoot>\<Prefix>*<Suffix> directories (WebView2 data named after the exe): keep the ones whose
+    # exe is still in Dest or still runs, and anything that is a link.
+    if (-not $DataRoot -or -not (Test-Path -LiteralPath $DataRoot)) { return }
+    foreach ($dir in @(Get-ChildItem -LiteralPath $DataRoot -Directory -Filter "$Prefix*$Suffix" -ErrorAction SilentlyContinue)) {
+        if ($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
+        if (Test-Path -LiteralPath (Join-Path $Dest $dir.Name)) { continue }
+        if (@(Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($dir.Name)) -ErrorAction SilentlyContinue).Count -gt 0) {
+            Write-Log "keeping the data of $($dir.Name): it is running"
+            continue
+        }
+        try {
+            Remove-Item -LiteralPath $dir.FullName -Recurse -Force
+            Write-Log "removed the data of the old build $($dir.Name)"
+        }
+        catch {
+            Write-Log "keeping the data of $($dir.Name): $($_.Exception.Message)"
+        }
+    }
 }
 
 $code = 0
@@ -139,6 +167,8 @@ try {
             Write-Log "keeping $($old.Name): $($_.Exception.Message)"
         }
     }
+
+    Remove-StaleWebViewData
 }
 catch {
     Write-Log "FAILED: $($_.Exception.Message)"

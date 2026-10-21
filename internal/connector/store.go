@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"afvi/ui/internal/appdata"
 )
 
 // Data is the content of the configuration file.
@@ -29,13 +31,9 @@ func NewStore(file string) *Store {
 	return &Store{file: file}
 }
 
-// DefaultFile is os.UserConfigDir()/AFVI-UI/connector.json.
+// DefaultFile is connector.json in the application data folder (appdata.Dir).
 func DefaultFile() (string, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "AFVI-UI", "connector.json"), nil
+	return appdata.Path("connector.json")
 }
 
 // emptyData returns the "nothing configured" Data: Version 1 and a non-nil Paths.
