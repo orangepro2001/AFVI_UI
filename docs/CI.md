@@ -34,7 +34,7 @@ nightly 预发布 ← Windows 电脑上的计划任务 AFVI-UI-Sync 每 5 分钟
 - **`v*` 标签**：服务器照旧直接发布正式 Release（不带测试包），发布后 Actions 补测一遍，结果只作提示，不拦截。
 - 构建失败时提交旁边是红色的 `afvi-ui-ci/server` 状态；Windows 测试在提交的 Checks 里是 `windows / test`、`windows / promote`。
 
-时间线（**预估，首次在 GitHub 上跑完后用实测值替换**）：服务器轮询最多 1 分钟 + 构建 30–80 秒 + 上传 10 秒 + GitHub 的 Windows 机器启动和测试 1–2 分钟 + 桌面轮询最多 5 分钟 ≈ 推送后 4–9 分钟 exe 出现在桌面。
+时间线（2026-10-21 首次完整运行的实测）：服务器轮询最多 1 分钟 + 构建和上传约 45–60 秒 + GitHub 上约 1 分钟（`test` 43 秒：检出 7、下载 5、校验 1、Go 测试 3、启动 exe 21；`promote` 12 秒；运行器排队 2 秒）+ 桌面轮询最多 5 分钟 ≈ 推送后 3–8 分钟 exe 出现在桌面。
 
 ## 文件
 
@@ -75,6 +75,7 @@ go run scripts/ciwait.go -sha <提交>      # 指定提交
 ssh AI '~/ci/afvi-ui/bin/ci status'       # 服务器侧的构建状态
 ```
 
+- **API 配额**：`ciwait` 和手工 `curl` 不带令牌时，GitHub 对同一出口 IP 每小时只给 60 次请求，用完会 403（`/rate_limit` 可以免费查重置时间）。同一 NAT 后的电脑和服务器共用一份。`ciwait` 用 ETag 条件请求，没变化的回答不占配额；要长时间盯或反复查，设 `GITHUB_TOKEN`（只读公开数据，任意有效令牌即可，5000 次/小时）。桌面同步读的是普通文件地址，不受这个限制。
 - **重新测试某个发布**：GitHub → Actions → windows → Run workflow，填 `nightly`、`ci-<短提交>` 或 `v1.2.3`。手动运行不会 promote。
 - **立刻要一个还没测完（或没测过）的 exe**：到 Releases 页面下载候选 `ci-<短提交>` 里的 exe（预发布，公开）。
 - **强制重建并重新发布 main**：`ssh AI '~/ci/afvi-ui/bin/ci build main --force'`，候选会被重建，Windows 测试重新跑。
@@ -110,10 +111,11 @@ deploy/server/ci build v0.0.1    # 标签：草稿 → 2 个文件（没有测�
 4. 把模拟 API 里的三个文件取出来，在 Windows 上跑 `verify-sums.ps1`、`run-wintests.ps1`、`smoke.ps1`（它们在 PowerShell 5.1 和 7 上都能运行）。
 5. `promote` 的脚本可以用一个只记录调用的假 `gh` 在本地跑（见这次的做法：从 `windows.yml` 抽出 `run:` 块执行）。
 
-## 待在 GitHub 上首次运行后确认
+## 已在真实环境确认（2026-10-21）
 
-这些在本机无法证实，第一次运行后据实更新本文：
+- 服务器用个人令牌公开候选发布，会触发 `windows` 工作流（`event: release`，`nightly` 的发布按 `if` 条件被跳过）。
+- windows-latest 有桌面和 WebView2：`smoke.ps1 -RequireWindow` 通过，即找到了标题为 `Pixel Inspector ( Version : <版本> - AFVI )` 的窗口并存活 15 秒；Go 测试包在 Windows 上通过。
+- `GITHUB_TOKEN` 的 `contents: write` 能替换 nightly 并删除候选；nightly 里的 exe 与服务器构建的逐字节相同（SHA-256 一致）。
+- 计划任务 `AFVI-UI-Sync` 一次执行成功：新 exe 到桌面、旧版被删、其他文件不动。
 
-- windows-latest 能否弹出窗口、截屏（`smoke.ps1 -RequireWindow` 失败时看 `smoke.log`）；镜像里有没有 WebView2 运行时（没有时 `-InstallWebView2` 会装）。
-- 整条流水线的实测耗时。
-- `GITHUB_TOKEN` 的 `contents: write` 能否在这个仓库里替换 nightly（仓库 Settings → Actions → General → Workflow permissions 不应限制它）。
+还没有实战验证的：镜像缺 WebView2 时 `-InstallWebView2` 的安装分支（读不到日志，只能从“启动 exe”一步只用了 21 秒推断这次没有触发安装）；`windows / test` 失败时的排查做法（排错表里的步骤未实战）。
