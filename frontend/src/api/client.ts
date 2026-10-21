@@ -3,9 +3,11 @@ import { inject } from 'vue'
 import type {
   AppInfo,
   CalibrationSnapshot,
+  ConfigGroup,
   DefectRow,
   HomeSnapshot,
   LogEntry,
+  MedianSetup,
   ModelEntry,
   NodeAnalysis,
   SessionInfo,
@@ -39,6 +41,10 @@ export interface ApiClient {
   getCalibration(): Promise<CalibrationSnapshot>
   /** The mask generation, inspection light and alignment settings of the SETTINGS page. */
   getSettings(): Promise<SettingsSnapshot>
+  /** The groups and rows of the configuration panel (the Tools button of the rail). */
+  getConfig(): Promise<ConfigGroup[]>
+  /** The lights and the unit map of the Median dialog. */
+  getMedianSetup(): Promise<MedianSetup>
   /** Pushed about once a second. */
   onSystemStats(listener: (stats: SystemStats) => void): Unsubscribe
   onLog(listener: (entry: LogEntry) => void): Unsubscribe

@@ -333,3 +333,50 @@ export interface ModelEntry {
   /** "2.0" */
   resolution: string
 }
+
+// --- Configuration panel ---------------------------------------------------------------------
+
+/** How a row of the configuration panel is edited. */
+export type ConfigKind = 'text' | 'number' | 'toggle' | 'choice'
+
+/** One row of the configuration panel (the Tools button of the rail). */
+export interface ConfigEntry {
+  /** Unique over all groups: "export.ip". */
+  key: string
+  label: string
+  kind: ConfigKind
+  /** A boolean for a toggle, the text of the value for every other kind. */
+  value: string | boolean
+  /** The choices of a `choice` row. */
+  options?: string[]
+}
+
+/** A heading of the panel and the rows under it. */
+export interface ConfigGroup {
+  id: string
+  title: string
+  entries: ConfigEntry[]
+}
+
+// --- Median dialog ---------------------------------------------------------------------------
+
+/** One of the Light check boxes of the Median dialog. */
+export interface MedianLight {
+  /** 1..4 */
+  id: number
+  /** "Light1" */
+  label: string
+  checked: boolean
+  /** false: shown dimmed, cannot be chosen (the machine has no such light). */
+  enabled: boolean
+}
+
+/** What the Median dialog starts from: the lights and the unit map to pick units on. */
+export interface MedianSetup {
+  lights: MedianLight[]
+  /** The unit map has `columns` x `rows` cells, numbered row by row from 0. */
+  columns: number
+  rows: number
+  /** The number in the "Select Random Units" field. */
+  randomCount: number
+}

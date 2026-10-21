@@ -2,8 +2,10 @@
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useApi } from '@/api'
 import LoadingOverlay from '@/components/app/LoadingOverlay.vue'
+import ConfigPanel from '@/features/dialogs/ConfigPanel.vue'
 import GenerateOptionDialog from '@/features/dialogs/GenerateOptionDialog.vue'
 import LoadGrabDialog from '@/features/dialogs/LoadGrabDialog.vue'
+import MedianDialog from '@/features/dialogs/MedianDialog.vue'
 import ModelSelectDialog from '@/features/dialogs/ModelSelectDialog.vue'
 import LoginDialog from '@/features/session/LoginDialog.vue'
 import { useAppStore } from '@/stores/app'
@@ -39,6 +41,12 @@ function onRailSelect(id: string) {
     case 'layout':
       app.runBusy(ALIGN_MS)
       break
+    case 'layers':
+      app.medianOpen = true
+      break
+    case 'tools':
+      app.configOpen = true
+      break
     // The other rail tools have no action yet.
   }
 }
@@ -59,6 +67,8 @@ function onRailSelect(id: string) {
       <ModelSelectDialog v-model:open="app.modelOpen" />
       <LoadGrabDialog v-model:open="app.grabOpen" />
       <GenerateOptionDialog v-model:open="app.generateOpen" />
+      <MedianDialog v-model:open="app.medianOpen" />
+      <ConfigPanel v-model:open="app.configOpen" />
       <LoadingOverlay v-if="app.busy" />
     </div>
   </TooltipProvider>

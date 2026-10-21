@@ -45,6 +45,10 @@
   --spacing-rail: 57px;
   --spacing-aside: 503px;
   --spacing-gap: 5px; /* the gap between panels */
+
+  /* The configuration panel (features/dialogs/ConfigPanel.vue), measured on the Tools reference. */
+  --spacing-prop: 367px; /* width, docked to the right edge */
+  --spacing-prop-row: 17.657px; /* one row of the property list (the design runs on a scaled DPI) */
 }
 
 /* Colour names. `inline` makes the utilities read the variable at use site, which is what lets
@@ -171,6 +175,17 @@
   --color-plain-body: var(--plain-body);
   --color-plain-line: var(--plain-line);
   --color-plain-text: var(--plain-text);
+  --color-plain-frame: var(--plain-frame);
+  --color-plain-box: var(--plain-box);
+  --color-plain-field-line: var(--plain-field-line);
+  --color-median-grid: var(--median-grid);
+
+  --color-prop-tool-on: var(--prop-tool-on);
+  --color-prop-arrow: var(--prop-arrow);
+  --color-prop-split: var(--prop-split);
+  --color-prop-search: var(--prop-search);
+  --color-prop-sort-a: var(--prop-sort-a);
+  --color-prop-sort-z: var(--prop-sort-z);
 
   --color-busy-dot: var(--busy-dot);
   --color-busy-text: var(--busy-text);

@@ -129,6 +129,48 @@ describe('AppShell', () => {
     expect(document.body.textContent).toContain('Log in/out')
   })
 
+  it('opens the Median dialog from the Layers button', async () => {
+    const { wrapper, app } = await setup()
+    railButton('Layers').click()
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(app.runWithContext(() => useAppStore()).medianOpen).toBe(true)
+    expect(document.body.textContent).toContain('Median')
+    expect(document.body.textContent).toContain('Select Random Units')
+  })
+
+  it('opens the configuration panel from the Tools button', async () => {
+    const { wrapper, app } = await setup()
+    railButton('Tools').click()
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(app.runWithContext(() => useAppStore()).configOpen).toBe(true)
+    expect(document.body.textContent).toContain('Miscellaneous')
+    expect(document.body.textContent).toContain('192.168.1.203')
+  })
+
+  it.each(['/', '/teach', '/review', '/calibrate', '/settings'])(
+    'opens the Median dialog and the configuration panel on %s',
+    async (path) => {
+      const { wrapper, app } = await setup(path)
+      const store = app.runWithContext(() => useAppStore())
+
+      railButton('Layers').click()
+      await wrapper.vm.$nextTick()
+      await flushPromises()
+      expect(store.medianOpen).toBe(true)
+      store.medianOpen = false
+      await flushPromises()
+
+      railButton('Tools').click()
+      await wrapper.vm.$nextTick()
+      await flushPromises()
+      expect(store.configOpen).toBe(true)
+    },
+  )
+
   it('shows the overlay on Layout and hides it after 3000ms', async () => {
     const { wrapper, app } = await setup()
     vi.useFakeTimers()
@@ -179,6 +221,8 @@ describe('AppShell', () => {
     expect(store.modelOpen).toBe(false)
     expect(store.grabOpen).toBe(false)
     expect(store.generateOpen).toBe(false)
+    expect(store.medianOpen).toBe(false)
+    expect(store.configOpen).toBe(false)
     expect(store.busy).toBe(false)
   })
 
@@ -193,6 +237,8 @@ describe('AppShell', () => {
     expect(store.modelOpen).toBe(false)
     expect(store.grabOpen).toBe(false)
     expect(store.generateOpen).toBe(false)
+    expect(store.medianOpen).toBe(false)
+    expect(store.configOpen).toBe(false)
     expect(store.busy).toBe(false)
   })
 

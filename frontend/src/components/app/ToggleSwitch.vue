@@ -5,12 +5,13 @@ import { computed, type HTMLAttributes } from 'vue'
 /**
  * The pill switches of the original application. Four sizes: `big` is the ON/OFF switch of the
  * calibration page, `small` the one in every row of its table, `mask` the one next to a defect mask
- * heading of the settings page, `table` the one in every row of the Image Analysis tables.
+ * heading of the settings page, `table` the one in every row of the Image Analysis tables, `prop`
+ * the one in the rows of the configuration panel.
  */
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
-    variant?: 'big' | 'small' | 'mask' | 'table'
+    variant?: 'big' | 'small' | 'mask' | 'table' | 'prop'
     disabled?: boolean
     label?: string
     class?: HTMLAttributes['class']
@@ -32,6 +33,8 @@ const frame = computed(() => {
       return cn('h-3 w-8', on ? 'bg-primary' : 'bg-foreground/90')
     case 'table':
       return cn('h-[14px] w-[31px]', on ? 'bg-primary' : 'bg-switch-off')
+    case 'prop':
+      return cn('h-3 w-7', on ? 'bg-primary' : 'bg-switch-off')
     default:
       return cn('h-[11px] w-7', on ? 'bg-primary' : 'bg-slider-track/60')
   }
@@ -46,6 +49,11 @@ const knob = computed(() => {
       return cn('top-[-0.5px] size-[13px] bg-foreground', on ? 'right-0' : 'left-0')
     case 'table':
       return cn('top-[3px] size-2', on ? 'right-[4px] bg-white' : 'left-[4px] bg-switch-off-knob')
+    case 'prop':
+      return cn(
+        'top-[2.5px] size-[7px]',
+        on ? 'right-[3px] bg-white' : 'left-[3px] bg-switch-off-knob',
+      )
     default:
       return cn(
         'top-[1.5px] size-2',

@@ -28,6 +28,10 @@ export const useAppStore = defineStore('app', () => {
   const grabOpen = ref(false)
   /** The "Generate Option" dialog (the Nodes button). */
   const generateOpen = ref(false)
+  /** The "Median" dialog (the Layers button). */
+  const medianOpen = ref(false)
+  /** The configuration panel on the right edge (the Tools button). */
+  const configOpen = ref(false)
   /** The "Please wait..." overlay that blocks the window while the machine works. */
   const busy = ref(false)
   let busyTimer: ReturnType<typeof setTimeout> | undefined
@@ -60,6 +64,8 @@ export const useAppStore = defineStore('app', () => {
     modelOpen,
     grabOpen,
     generateOpen,
+    medianOpen,
+    configOpen,
     busy,
     status,
     load,

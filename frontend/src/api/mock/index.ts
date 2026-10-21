@@ -2,7 +2,9 @@ import type { ApiClient } from '../client'
 import type { LogEntry, SystemStats } from '../types'
 import { createNodeAnalysis } from './analysis'
 import { createCalibrationSnapshot } from './calibration'
+import { createConfig } from './config'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
+import { createMedianSetup } from './median'
 import { createModels } from './models'
 import { createDefects } from './review'
 import { createSession } from './session'
@@ -96,6 +98,14 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
 
     async getSettings() {
       return createSettingsSnapshot()
+    },
+
+    async getConfig() {
+      return createConfig()
+    },
+
+    async getMedianSetup() {
+      return createMedianSetup()
     },
 
     onSystemStats(listener) {

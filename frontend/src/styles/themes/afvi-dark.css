@@ -148,6 +148,18 @@
   --plain-body: #252525;
   --plain-line: #535353; /* frame of a group box and border of the OK button */
   --plain-text: #dfdfdf;
+  --plain-frame: #8c8c8c; /* the 1px frame of a window (Median) */
+  --plain-box: #5a5a5a; /* border of a check box */
+  --plain-field-line: #7d7d7d; /* border of a number field */
+  --median-grid: #c9163c; /* the lines of the Median unit map */
+
+  /* --- Configuration panel (the Tools button of the rail) -------------------------------------- */
+  --prop-tool-on: #181818; /* the pressed toolbar button */
+  --prop-arrow: #636160; /* fold arrow of a heading */
+  --prop-split: #656565; /* line above the description area */
+  --prop-search: #5b6b8a; /* magnifier of the search field */
+  --prop-sort-a: #4f83c4; /* the A of the sort button */
+  --prop-sort-z: #8a5fc0; /* the Z of the sort button */
 
   /* --- Loading overlay ------------------------------------------------------------------------ */
   --busy-dot: #00abfd; /* the head of the turning ring; the trail is the same colour fading out */

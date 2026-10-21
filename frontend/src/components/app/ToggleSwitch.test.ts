@@ -42,6 +42,18 @@ describe('ToggleSwitch', () => {
     expect(off.find('span').classes()).toContain('top-[3px]')
   })
 
+  it('draws the prop variant as a 28 x 12 switch with a 7px knob', () => {
+    const on = mount(ToggleSwitch, { props: { modelValue: true, variant: 'prop' } })
+    const off = mount(ToggleSwitch, { props: { modelValue: false, variant: 'prop' } })
+
+    expect(on.classes()).toEqual(expect.arrayContaining(['h-3', 'w-7', 'bg-primary']))
+    expect(on.find('span').classes()).toEqual(expect.arrayContaining(['size-[7px]', 'right-[3px]']))
+    expect(off.classes()).toContain('bg-switch-off')
+    expect(off.find('span').classes()).toEqual(
+      expect.arrayContaining(['bg-switch-off-knob', 'left-[3px]']),
+    )
+  })
+
   it('does not react while disabled', async () => {
     const wrapper = mount(ToggleSwitch, { props: { modelValue: false, disabled: true } })
     await wrapper.trigger('click')
