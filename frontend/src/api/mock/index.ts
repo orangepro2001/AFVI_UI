@@ -3,6 +3,7 @@ import type { LogEntry, SystemStats } from '../types'
 import { createNodeAnalysis } from './analysis'
 import { createCalibrationSnapshot } from './calibration'
 import { createConfig } from './config'
+import { createMockConnector } from './connector'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
 import { createMedianSetup } from './median'
 import { createActiveModel, createModels } from './models'
@@ -117,6 +118,8 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
     async getMedianSetup() {
       return createMedianSetup()
     },
+
+    ...createMockConnector(),
 
     onSystemStats(listener) {
       if (!live) return () => {}

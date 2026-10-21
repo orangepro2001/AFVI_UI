@@ -1,5 +1,13 @@
+import type { ConnectorCalls } from './connector'
 import type { InventoryCalls } from './inventory'
-import type { ActiveModel, ModelEntry, NodeAnalysis, TeachSnapshot } from './types'
+import type {
+  ActiveModel,
+  ConnectorConfig,
+  ModelEntry,
+  NodeAnalysis,
+  PathCheck,
+  TeachSnapshot,
+} from './types'
 
 type TeachSpec = Pick<TeachSnapshot, 'unit' | 'dummy'>
 
@@ -17,17 +25,32 @@ async function readError(response: Response): Promise<Error> {
   return new Error(`HTTP ${response.status}`)
 }
 
-/** InventoryCalls over the dev server of scripts/devapi.go: GET <base>/api/<Method>. */
+/**
+ * InventoryCalls and ConnectorCalls over the dev server of scripts/devapi.go:
+ * GET <base>/api/<Method>, POST for SaveConnector.
+ */
 export function createHttpCalls(
   baseUrl: string,
   fetchFn: typeof fetch = (...args) => fetch(...args),
-): InventoryCalls {
+): InventoryCalls & ConnectorCalls {
   const root = trimBase(baseUrl)
 
-  async function get<T>(path: string): Promise<T> {
-    const response = await fetchFn(`${root}${path}`)
+  async function send<T>(input: string, init?: RequestInit): Promise<T> {
+    const response = await fetchFn(`${root}${input}`, init)
     if (!response.ok) throw await readError(response)
     return (await response.json()) as T
+  }
+
+  function get<T>(path: string): Promise<T> {
+    return send<T>(path)
+  }
+
+  function post<T>(path: string, body: unknown): Promise<T> {
+    return send<T>(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
   }
 
   return {
@@ -37,5 +60,10 @@ export function createHttpCalls(
     getTeachSpec: () => get<TeachSpec>('/api/GetTeachSpec'),
     getNodeAnalysis: (nodeId) =>
       get<NodeAnalysis>(`/api/GetNodeAnalysis?id=${encodeURIComponent(nodeId)}`),
+    getConnector: () => get<ConnectorConfig>('/api/GetConnector'),
+    checkMachinePath: (path) =>
+      get<PathCheck>(`/api/CheckMachinePath?path=${encodeURIComponent(path)}`),
+    saveConnector: (input) => post<ConnectorConfig>('/api/SaveConnector', input),
+    pickFolder: (startDir) => get<string>(`/api/PickFolder?dir=${encodeURIComponent(startDir)}`),
   }
 }

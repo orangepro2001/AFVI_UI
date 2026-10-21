@@ -34,6 +34,10 @@ export const useAppStore = defineStore('app', () => {
   const medianOpen = ref(false)
   /** The configuration panel on the right edge (the Tools button). */
   const configOpen = ref(false)
+  /** The Connector dialog (the Share button of the rail). */
+  const connectorOpen = ref(false)
+  /** Counts the reloads of the inventory (another host was chosen); stores that hold inventory data watch it. */
+  const inventoryEpoch = ref(0)
   /** The "Please wait..." overlay that blocks the window while the machine works. */
   const busy = ref(false)
   let busyTimer: ReturnType<typeof setTimeout> | undefined
@@ -54,6 +58,12 @@ export const useAppStore = defineStore('app', () => {
   /** Loads another model into the backend; the MODEL boxes and TEACH follow it. */
   async function selectModel(name: string) {
     model.value = await api.selectModel(name)
+  }
+
+  /** Another host was chosen: read the active model again and tell the inventory holders. */
+  async function reloadInventory() {
+    model.value = await api.getActiveModel()
+    inventoryEpoch.value++
   }
 
   // A timer that outlives the store would write to a store nobody reads any more.
@@ -79,10 +89,13 @@ export const useAppStore = defineStore('app', () => {
     generateOpen,
     medianOpen,
     configOpen,
+    connectorOpen,
+    inventoryEpoch,
     busy,
     status,
     load,
     selectModel,
+    reloadInventory,
     runBusy,
   }
 })

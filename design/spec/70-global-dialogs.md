@@ -13,7 +13,8 @@
 | 5 `images` | Load grab images | `app.grabOpen` |
 | 6 `nodes` | Generate Option | `app.generateOpen` |
 | 7 `layout` | Align：显示 “Please wait...” 遮罩（模拟机器 3 秒后完成） | `app.busy`、`app.runBusy(ms)` |
-| 1 `information`、3 `share`、其余 | 还没有参考图，暂无动作 | |
+| 3 `share` | Connector：配置 FM1/FM2/BM 的数据文件夹并选当前主机（没有参考图，见 [95-connector.md](95-connector.md)） | `app.connectorOpen` |
+| 1 `information`、其余 | 还没有参考图，暂无动作 | |
 
 ## 截图偏移（图 − 设计）
 

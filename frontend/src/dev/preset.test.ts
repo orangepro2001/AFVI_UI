@@ -69,6 +69,17 @@ describe('applyPreset dialogs', () => {
     expect(store.generateOpen).toBe(false)
   })
 
+  it('opens only the connector dialog for ?dialog=connector', () => {
+    const app = withApp()
+    preset({ dialog: 'connector' }, app)
+    const store = readStore(app)
+    expect(store.connectorOpen).toBe(true)
+    expect(store.loginOpen).toBe(false)
+    expect(store.modelOpen).toBe(false)
+    expect(store.grabOpen).toBe(false)
+    expect(store.generateOpen).toBe(false)
+  })
+
   it('turns on the overlay for ?busy=1 and keeps it on', () => {
     vi.useFakeTimers()
     const app = withApp()

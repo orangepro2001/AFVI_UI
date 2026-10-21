@@ -235,6 +235,33 @@ describe('AppShell', () => {
     expect(document.body.textContent).toContain('Choose Model Names')
   })
 
+  it('opens the connector dialog from the Share button', async () => {
+    const { wrapper, app } = await setup()
+    railButton('Share').click()
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(app.runWithContext(() => useAppStore()).connectorOpen).toBe(true)
+    expect(document.body.textContent).toContain('Connector')
+  })
+
+  it('ignores the Share button while the machine is busy', async () => {
+    const { wrapper, app } = await setup()
+    vi.useFakeTimers()
+
+    app.runWithContext(() => useAppStore()).runBusy(3000)
+    await wrapper.vm.$nextTick()
+
+    railButton('Share').click()
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(app.runWithContext(() => useAppStore()).connectorOpen).toBe(false)
+
+    vi.advanceTimersByTime(3000)
+    await flushPromises()
+  })
+
   it('does nothing for the Information button', async () => {
     const { wrapper, app } = await setup()
     railButton('Information').click()

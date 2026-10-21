@@ -23,7 +23,7 @@ const nodes: Record<string, string> = {
  *   ?spec=dummy        Dummy tab of the specification
  *   ?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>   selected node of the tree
  *   ?pointer=x,y       the pointer has been over the picture: XY of the read-out bar
- *   ?dialog=login|model|grab|generate|median|config   one of the rail's dialogs (open on any ?route)
+ *   ?dialog=login|model|grab|generate|median|config|connector   one of the rail's dialogs (open on any ?route)
  *   ?busy=1            the "Please wait..." overlay (stays until the page is reloaded)
  *   ?scroll=bottom|<px>   the specification tree scrolled to its end, or by that many pixels
  */
@@ -62,6 +62,9 @@ export function applyPreset(params: URLSearchParams, app: App): void {
         break
       case 'config':
         app.configOpen = true
+        break
+      case 'connector':
+        app.connectorOpen = true
         break
     }
     if (params.get('busy') === '1') app.busy = true

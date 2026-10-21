@@ -1,3 +1,119 @@
+export namespace connector {
+	
+	export class Machine {
+	    id: string;
+	    path: string;
+	    status: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Machine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.message = source["message"];
+	    }
+	}
+	export class Config {
+	    machines: Machine[];
+	    active: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Config(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.machines = this.convertValues(source["machines"], Machine);
+	        this.active = source["active"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class MachinePath {
+	    id: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MachinePath(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.path = source["path"];
+	    }
+	}
+	export class PathCheck {
+	    ok: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PathCheck(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.message = source["message"];
+	    }
+	}
+	export class SaveInput {
+	    machines: MachinePath[];
+	    active: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.machines = this.convertValues(source["machines"], MachinePath);
+	        this.active = source["active"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace inventory {
 	
 	export class ActiveModel {

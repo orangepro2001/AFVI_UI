@@ -5,12 +5,15 @@ import type {
   AppInfo,
   CalibrationSnapshot,
   ConfigGroup,
+  ConnectorConfig,
+  ConnectorInput,
   DefectRow,
   HomeSnapshot,
   LogEntry,
   MedianSetup,
   ModelEntry,
   NodeAnalysis,
+  PathCheck,
   SessionInfo,
   SettingsSnapshot,
   SystemStats,
@@ -40,6 +43,17 @@ export interface ApiClient {
   getActiveModel(): Promise<ActiveModel>
   /** Loads another model; the specification tree and tables of TEACH follow it. */
   selectModel(name: string): Promise<ActiveModel>
+  /** The three hosts and which one the application reads (the Share button of the rail). */
+  getConnector(): Promise<ConnectorConfig>
+  /** Checks one folder: it must directly contain PxInventory and PxRepository. */
+  checkMachinePath(path: string): Promise<PathCheck>
+  /**
+   * Applies the folders and the host to read; rejects when a folder fails the check. Afterwards
+   * every model and inventory call answers from the chosen host.
+   */
+  saveConnector(input: ConnectorInput): Promise<ConnectorConfig>
+  /** Opens the folder picker of the window at `startDir`; resolves to "" when cancelled. */
+  pickFolder(startDir: string): Promise<string>
   /** The defects of the strip on the REVIEW page (empty until an inspection has run). */
   getDefects(): Promise<DefectRow[]>
   /** The light strip picture and the 20 channels of the CALIBRATE page. */

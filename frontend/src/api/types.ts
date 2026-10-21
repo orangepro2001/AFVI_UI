@@ -336,6 +336,41 @@ export interface ActiveModel {
   surface: 'Top' | 'Bottom'
 }
 
+/** The three hosts the application can read its models and inventory from. */
+export type MachineId = 'FM1' | 'FM2' | 'BM'
+
+/** The result of checking one folder: it must directly contain PxInventory and PxRepository. */
+export interface PathCheck {
+  ok: boolean
+  /** Why the folder is rejected, e.g. "PxRepository is missing"; empty when ok. */
+  message: string
+}
+
+/** One host of the Connector dialog. */
+export interface ConnectorMachine {
+  id: MachineId
+  /** The stored folder, empty when none. */
+  path: string
+  /** `ok`: the folder holds PxInventory and PxRepository; `invalid`: stored but fails the check. */
+  status: 'unset' | 'ok' | 'invalid'
+  /** The check message when `invalid`, otherwise empty. */
+  message: string
+}
+
+/** The state of the Connector dialog (the Share button of the rail). */
+export interface ConnectorConfig {
+  /** Always the three hosts, in the order FM1, FM2, BM. */
+  machines: ConnectorMachine[]
+  /** The host the application reads from; empty until one is configured. */
+  active: MachineId | ''
+}
+
+/** What the Connector dialog applies: the folders (empty clears a host) and the host to read. */
+export interface ConnectorInput {
+  machines: { id: MachineId; path: string }[]
+  active: MachineId | ''
+}
+
 /** One row of the "Choose Model Names" dialog. */
 export interface ModelEntry {
   /** "01" */

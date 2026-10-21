@@ -59,7 +59,33 @@ describe('app store', () => {
     expect(store.modelOpen).toBe(false)
     expect(store.grabOpen).toBe(false)
     expect(store.generateOpen).toBe(false)
+    expect(store.connectorOpen).toBe(false)
     expect(store.busy).toBe(false)
+  })
+
+  it('starts with inventory epoch 0', async () => {
+    const store = await withStore()
+    expect(store.inventoryEpoch).toBe(0)
+  })
+
+  it('reloads the active model and bumps the epoch with reloadInventory', async () => {
+    const mock = createMockApi({ live: false })
+    const getActiveModel = vi.fn(mock.getActiveModel)
+    const api = { ...mock, getActiveModel }
+    const app = createApp({}).provide(apiKey, api)
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+    const store = app.runWithContext(() => useAppStore())
+
+    await store.reloadInventory()
+    expect(getActiveModel).toHaveBeenCalledTimes(1)
+    expect(store.model?.name).toBe('TEST1020-00')
+    expect(store.inventoryEpoch).toBe(1)
+
+    await store.reloadInventory()
+    expect(getActiveModel).toHaveBeenCalledTimes(2)
+    expect(store.inventoryEpoch).toBe(2)
   })
 
   describe('runBusy', () => {

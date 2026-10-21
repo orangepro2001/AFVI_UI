@@ -1,4 +1,5 @@
 import type { ApiClient } from './client'
+import { createConnectorApi } from './connector'
 import { createHttpCalls } from './http'
 import { createInventoryApi } from './inventory'
 import { createMockApi } from './mock'
@@ -26,7 +27,7 @@ export function devApiUrl(search: string, dev: boolean): string | null {
 /**
  * Inside Wails the Go methods win; whatever Go does not implement yet is answered by the mock.
  * In a browser everything is the mock, which is how the UI is developed before the backend exists,
- * unless `?api=...` points at scripts/devapi.go.
+ * unless `?api=...` points at scripts/devapi.go (inventory and Connector come from there then).
  */
 export function createApi(): ApiClient {
   // ?freeze in the URL stops the timers of the mock: screenshots for design checks stay still.
@@ -36,6 +37,9 @@ export function createApi(): ApiClient {
   if (isWails()) return { ...mock, ...createWailsApi(mock) }
   const url =
     typeof location !== 'undefined' ? devApiUrl(location.search, import.meta.env.DEV) : null
-  if (url) return { ...mock, ...createInventoryApi(createHttpCalls(url), mock) }
+  if (url) {
+    const calls = createHttpCalls(url)
+    return { ...mock, ...createInventoryApi(calls, mock), ...createConnectorApi(calls) }
+  }
   return mock
 }

@@ -1,12 +1,24 @@
 import type { ApiClient } from './client'
+import { createConnectorApi } from './connector'
 import { createInventoryApi } from './inventory'
-import type { ActiveModel, ModelEntry, NodeAnalysis, TeachSnapshot } from './types'
+import type {
+  ActiveModel,
+  ConnectorConfig,
+  ModelEntry,
+  NodeAnalysis,
+  PathCheck,
+  TeachSnapshot,
+} from './types'
 import {
+  CheckMachinePath,
   GetActiveModel,
   GetAppInfo,
+  GetConnector,
   GetModels,
   GetNodeAnalysis,
   GetTeachSpec,
+  PickFolder,
+  SaveConnector,
   SelectModel,
 } from '../../wailsjs/go/main/App'
 import {
@@ -19,16 +31,17 @@ import {
 type TeachSpec = Pick<TeachSnapshot, 'unit' | 'dummy'>
 
 /**
- * The methods the Go side implements today: getAppInfo, toggleFullscreen, and the inventory calls
- * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis). Everything else stays with
- * the mock until Go has it (createApi merges the two), so this list is the honest state of the
- * backend.
+ * The methods the Go side implements today: getAppInfo, toggleFullscreen, the inventory calls
+ * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis) and the four Connector calls
+ * (getConnector, checkMachinePath, saveConnector, pickFolder). Everything else stays with the mock
+ * until Go has it (createApi merges the two), so this list is the honest state of the backend.
  *
  * To move a method over: add the exported method to App (app.go), run scripts/bindings.sh, and
  * call the generated function here.
  *
  * The generated classes are wider than our unions (ModelEntry.tone is a string, SpecNode.align
- * too); Wails returns plain JSON objects, so the results are cast to the target types.
+ * too, connector.SaveInput has other fields); Wails returns plain JSON objects and accepts plain
+ * JSON on the way in, so the results and the SaveInput argument are cast to the target types.
  */
 export function createWailsApi(base: ApiClient): Partial<ApiClient> {
   return {
@@ -43,6 +56,15 @@ export function createWailsApi(base: ApiClient): Partial<ApiClient> {
       },
       base,
     ),
+    ...createConnectorApi({
+      getConnector: () => GetConnector() as unknown as Promise<ConnectorConfig>,
+      checkMachinePath: (path) => CheckMachinePath(path) as unknown as Promise<PathCheck>,
+      saveConnector: (input) =>
+        SaveConnector(
+          input as unknown as Parameters<typeof SaveConnector>[0],
+        ) as unknown as Promise<ConnectorConfig>,
+      pickFolder: (startDir) => PickFolder(startDir) as unknown as Promise<string>,
+    }),
     // Window control is the Wails runtime, not a Go method of ours.
     toggleFullscreen: async () => {
       if (await WindowIsFullscreen()) WindowUnfullscreen()

@@ -162,6 +162,51 @@ describe('teach store model switch', () => {
     expect(appStore.model).not.toBeNull()
     expect(getTeach).toHaveBeenCalledTimes(1)
   })
+
+  it('reloads the tree when another host is chosen, even with the same model', async () => {
+    const mock = createMockApi({ live: false })
+    const getTeach = vi.fn(mock.getTeach)
+    const app = createApp({}).provide(apiKey, { ...mock, getTeach })
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+
+    const appStore = app.runWithContext(() => useAppStore())
+    const store = app.runWithContext(() => useTeachStore())
+
+    await store.load()
+    expect(getTeach).toHaveBeenCalledTimes(1)
+
+    app.runWithContext(() => store.select('u-au-cpad'))
+    await flushPromises()
+    expect(store.selectedId).toBe('u-au-cpad')
+
+    await appStore.reloadInventory()
+    await flushPromises()
+
+    expect(getTeach).toHaveBeenCalledTimes(2)
+    expect(store.selectedId).toBeNull()
+    expect(store.snapshot).not.toBeNull()
+  })
+
+  it('reloads once when the model and the epoch change together', async () => {
+    const mock = createMockApi({ live: false })
+    const getTeach = vi.fn(mock.getTeach)
+    const app = createApp({}).provide(apiKey, { ...mock, getTeach })
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+
+    const appStore = app.runWithContext(() => useAppStore())
+    const store = app.runWithContext(() => useTeachStore())
+    await store.load()
+    expect(getTeach).toHaveBeenCalledTimes(1)
+
+    await Promise.all([appStore.selectModel('another-01'), appStore.reloadInventory()])
+    await flushPromises()
+
+    expect(getTeach).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('teach store selection', () => {

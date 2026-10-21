@@ -55,12 +55,9 @@ TEACH 右半部分（Specification 树、Align 行、Image Analysis 三张表）
 
 ## 数据位置
 
-后端按顺序找 `PxInventory` 目录（要有 `INSPECT_SPEC`）：
+后端只读 Connector 里选定主机的 `<路径>/PxInventory`（要有 `INSPECT_SPEC`）；配置、校验和切换见 [95-connector.md](95-connector.md)。
 
-1. 环境变量 `AFVI_INVENTORY`（`PxInventory` 目录，或它的上一级）；
-2. 当前目录与可执行文件所在目录，各自及其最多 6 级上级目录里的 `PxInventory`、`design/repo/<机器>/PxInventory`（机器取环境变量 `AFVI_MACHINE`，默认 `FM1`）。
-
-找不到：Go 方法返回错误；Wails 窗口里的适配器退回模拟数据并在控制台写一行警告。
+没有配置、路径失效或打不开时 Go 方法返回错误；Wails 窗口里的适配器退回模拟数据并在控制台写一行警告。不再有环境变量或自动查找。
 
 ## 已知限制
 

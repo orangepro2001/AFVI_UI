@@ -4,6 +4,7 @@ import { useApi } from '@/api'
 import type { ModelEntry } from '@/api/types'
 import LoadingOverlay from '@/components/app/LoadingOverlay.vue'
 import ConfigPanel from '@/features/dialogs/ConfigPanel.vue'
+import ConnectorDialog from '@/features/dialogs/ConnectorDialog.vue'
 import GenerateOptionDialog from '@/features/dialogs/GenerateOptionDialog.vue'
 import LoadGrabDialog from '@/features/dialogs/LoadGrabDialog.vue'
 import MedianDialog from '@/features/dialogs/MedianDialog.vue'
@@ -29,6 +30,9 @@ function onRailSelect(id: string) {
   switch (id) {
     case 'user':
       app.loginOpen = true
+      break
+    case 'share':
+      app.connectorOpen = true
       break
     case 'model':
       app.modelOpen = true
@@ -71,6 +75,7 @@ function onModelApply(entry: ModelEntry) {
       </div>
       <LoginDialog v-model:open="app.loginOpen" />
       <ModelSelectDialog v-model:open="app.modelOpen" @apply="onModelApply" />
+      <ConnectorDialog v-model:open="app.connectorOpen" @applied="app.reloadInventory()" />
       <LoadGrabDialog v-model:open="app.grabOpen" />
       <GenerateOptionDialog v-model:open="app.generateOpen" />
       <MedianDialog v-model:open="app.medianOpen" />

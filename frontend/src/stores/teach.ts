@@ -133,11 +133,15 @@ export const useTeachStore = defineStore('teach', () => {
     await load()
   }
 
-  // The first model (null -> a value) is the one `load()` reads itself; later changes reload.
+  // The first model (null -> a value) is the one `load()` reads itself; later changes reload. A
+  // host switch (inventoryEpoch) reloads too, even when the model name stays the same, and counts
+  // once when both change together.
   watch(
-    () => app.model?.name,
-    (name, previous) => {
-      if (previous !== undefined && name !== previous) void reload()
+    () => [app.model?.name, app.inventoryEpoch] as const,
+    ([name, epoch], [previousName, previousEpoch]) => {
+      if (epoch !== previousEpoch || (previousName !== undefined && name !== previousName)) {
+        void reload()
+      }
     },
   )
 
