@@ -19,10 +19,14 @@ import (
 	"path/filepath"
 
 	"afvi/ui/internal/connector"
+	"afvi/ui/internal/inventory"
 )
 
 // devConfig is the development configuration file, relative to the repository root.
 const devConfig = ".dev/connector.json"
+
+// devRoiDir keeps the ROIs the developer draws; the installed app's folder is never touched.
+const devRoiDir = ".dev/roi"
 
 // referenceRoot holds the reference data of the three hosts: design/repo/FM1, FM2 and BM.
 const referenceRoot = "design/repo"
@@ -41,6 +45,7 @@ func main() {
 	_, statErr := os.Stat(file)
 	fresh := errors.Is(statErr, os.ErrNotExist)
 	hub := connector.NewHub(connector.NewStore(file))
+	hub.SetRoiDir(devRoiDir)
 	if seed && fresh {
 		seedFromReference(hub)
 	}
@@ -122,6 +127,37 @@ func apiHandler(hub *connector.Hub) http.HandlerFunc {
 				return nil, err
 			}
 			return svc.Analysis(r.URL.Query().Get("id"))
+		},
+		"GetAlignView": func(*http.Request) (any, error) {
+			svc, err := hub.Inventory()
+			if err != nil {
+				return nil, err
+			}
+			return svc.AlignView()
+		},
+		"SaveAlignRois": func(r *http.Request) (any, error) {
+			if r.Method != http.MethodPost {
+				return nil, errMethodNotAllowed
+			}
+			var rois []inventory.AlignRoi
+			if err := json.NewDecoder(r.Body).Decode(&rois); err != nil {
+				return nil, &statusError{code: http.StatusBadRequest, msg: err.Error()}
+			}
+			svc, err := hub.Inventory()
+			if err != nil {
+				return nil, err
+			}
+			return svc.SaveAlignRois(rois)
+		},
+		"ResetAlignRois": func(r *http.Request) (any, error) {
+			if r.Method != http.MethodPost {
+				return nil, errMethodNotAllowed
+			}
+			svc, err := hub.Inventory()
+			if err != nil {
+				return nil, err
+			}
+			return svc.ResetAlignRois()
 		},
 		"GetConnector": func(*http.Request) (any, error) {
 			return hub.Config(), nil

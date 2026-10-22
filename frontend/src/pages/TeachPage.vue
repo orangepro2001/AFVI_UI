@@ -2,14 +2,17 @@
 import { computed, onBeforeUnmount, watch } from 'vue'
 import type { ImageRef } from '@/api/types'
 import WorkbenchLayout from '@/layouts/WorkbenchLayout.vue'
+import AlignRoiLayer from '@/features/teach/AlignRoiLayer.vue'
 import TeachPanel from '@/features/teach/TeachPanel.vue'
 import ViewerOverlay from '@/features/workbench/ViewerOverlay.vue'
 import ViewerTools from '@/features/workbench/ViewerTools.vue'
+import { useAlignRoiStore } from '@/stores/alignRoi'
 import { useTeachStore } from '@/stores/teach'
 import { useWorkbenchStore } from '@/stores/workbench'
 
 const teach = useTeachStore()
 const workbench = useWorkbenchStore()
+const alignRoi = useAlignRoiStore()
 const mode = computed(() => teach.viewerMode)
 
 // The viewer follows the selected node; the toolbar's tools wait until nothing is selected again.
@@ -26,9 +29,26 @@ onBeforeUnmount(() => {
   workbench.pointerSeen = false
 })
 
+/** The Metal node shows the composed picture with editable ROI boxes; SR and DMG stay static. */
+const roiEditing = computed(() => mode.value === 'align' && teach.selectedNode?.align === 'metal')
+
+watch(
+  roiEditing,
+  (editing) => {
+    if (editing) void alignRoi.ensureLoaded().catch(() => undefined)
+  },
+  { immediate: true },
+)
+
+function onToolAction(action: 'trash' | 'save') {
+  if (action === 'trash') alignRoi.removeSelected()
+  else void alignRoi.save()
+}
+
 // undefined: the strip; null: an empty viewer; an ImageRef: the picture of the selected node.
 const viewerImage = computed<ImageRef | null | undefined>(() => {
   if (mode.value === 'strip') return undefined
+  if (roiEditing.value && alignRoi.view) return alignRoi.view.image
   if (mode.value === 'align') return teach.alignImage
   return null
 })
@@ -49,10 +69,20 @@ const showTools = computed(
 <template>
   <WorkbenchLayout :image="viewerImage" :image-top="imageTop" :readout="readoutVariant">
     <template #overlay>
-      <ViewerOverlay :tool="mode === 'strip' ? workbench.tool : null" />
+      <AlignRoiLayer v-if="roiEditing" />
+      <ViewerOverlay v-else :tool="mode === 'strip' ? workbench.tool : null" />
     </template>
     <template #tools>
-      <ViewerTools v-if="showTools" :variant="mode === 'align' ? 'roi' : 'draw'" />
+      <ViewerTools
+        v-if="showTools"
+        :variant="mode === 'align' ? 'roi' : 'draw'"
+        :live="roiEditing"
+        :tool="alignRoi.tool"
+        :can-trash="alignRoi.selectedId !== null"
+        :can-save="alignRoi.dirty && !alignRoi.saving"
+        @update:tool="alignRoi.setTool"
+        @action="onToolAction"
+      />
     </template>
     <template #aside><TeachPanel /></template>
   </WorkbenchLayout>

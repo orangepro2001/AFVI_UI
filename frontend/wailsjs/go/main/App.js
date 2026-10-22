@@ -10,6 +10,10 @@ export function GetActiveModel() {
   return window['go']['main']['App']['GetActiveModel']();
 }
 
+export function GetAlignView() {
+  return window['go']['main']['App']['GetAlignView']();
+}
+
 export function GetAppInfo() {
   return window['go']['main']['App']['GetAppInfo']();
 }
@@ -32,6 +36,14 @@ export function GetTeachSpec() {
 
 export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
+}
+
+export function ResetAlignRois() {
+  return window['go']['main']['App']['ResetAlignRois']();
+}
+
+export function SaveAlignRois(arg1) {
+  return window['go']['main']['App']['SaveAlignRois'](arg1);
 }
 
 export function SaveConnector(arg1) {

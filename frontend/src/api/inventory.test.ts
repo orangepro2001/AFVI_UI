@@ -38,6 +38,9 @@ function failingCalls(overrides: Partial<InventoryCalls> = {}): InventoryCalls {
     selectModel: fail,
     getTeachSpec: fail,
     getNodeAnalysis: fail,
+    getAlignView: fail,
+    saveAlignRois: fail,
+    resetAlignRois: fail,
     ...overrides,
   }
 }
@@ -59,6 +62,9 @@ describe('createInventoryApi', () => {
       selectModel: vi.fn(async () => MODEL),
       getTeachSpec: vi.fn(async () => teachSpec()),
       getNodeAnalysis: vi.fn(async () => emptyAnalysis()),
+      getAlignView: vi.fn(async () => base.getAlignView()),
+      saveAlignRois: vi.fn(async () => []),
+      resetAlignRois: vi.fn(async () => []),
     }
     const warn = vi.fn()
     const api = createInventoryApi(calls, base, warn)

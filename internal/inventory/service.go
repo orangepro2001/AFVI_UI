@@ -25,6 +25,10 @@ type Service struct {
 
 	mu     sync.Mutex
 	active string
+	// userDir is where the user's own ROI files go ("" until SetUserDir).
+	userDir string
+	// picture is the last composed align picture.
+	picture *composed
 
 	cache *xmlCache
 }

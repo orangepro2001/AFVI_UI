@@ -2,6 +2,8 @@ import type { InjectionKey } from 'vue'
 import { inject } from 'vue'
 import type {
   ActiveModel,
+  AlignRoi,
+  AlignView,
   AppInfo,
   CalibrationSnapshot,
   ConfigGroup,
@@ -35,6 +37,18 @@ export interface ApiClient {
   getTeach(): Promise<TeachSnapshot>
   /** The three Image Analysis tables of one node of the specification tree. */
   getNodeAnalysis(nodeId: string): Promise<NodeAnalysis>
+  /**
+   * The composed Metal / SR picture of the loaded model with its align ROIs: the user's own list
+   * when one was saved, else the machine's.
+   */
+  getAlignView(): Promise<AlignView>
+  /**
+   * Saves the whole ROI list of the loaded model. It goes to the user's own file, never into the
+   * machine's data; resolves to the list as saved (clamped into the picture).
+   */
+  saveAlignRois(rois: AlignRoi[]): Promise<AlignRoi[]>
+  /** Drops the user's list: the machine's own ROIs are back. */
+  resetAlignRois(): Promise<AlignRoi[]>
   /** The signed-in user and the accounts of the "Log in/out" dialog. */
   getSession(): Promise<SessionInfo>
   /** The models of the "Choose Model Names" dialog. */

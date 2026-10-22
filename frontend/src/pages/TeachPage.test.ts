@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
+import { useAlignRoiStore } from '@/stores/alignRoi'
 import { useTeachStore } from '@/stores/teach'
 import { useWorkbenchStore } from '@/stores/workbench'
 import TeachPage from './TeachPage.vue'
@@ -77,13 +78,27 @@ describe('TeachPage', () => {
 
     const image = wrapper.find('img.max-w-none')
     expect(image.exists()).toBe(true)
-    expect(image.attributes('src')).toBe(teach.alignImage?.url)
+    // Metal shows the composed picture with the editable ROI boxes.
+    expect(image.attributes('src')).toBe(useAlignRoiStore().view?.image.url)
+    expect(wrapper.findAll('rect[data-roi]')).toHaveLength(6)
 
     expect(wrapper.find('[aria-label="Select"]').exists()).toBe(true)
     const rect = wrapper.find('[aria-label="Rectangle"]')
     expect(rect.classes()).toContain('border-tool-border')
     expect(wrapper.find('[aria-label="Ruler"]').attributes('disabled')).toBeDefined()
     expect(workbench.toolsLocked).toBe(true)
+  })
+
+  it('keeps the SR picture static, without ROI boxes', async () => {
+    const wrapper = await mountPage()
+    const teach = useTeachStore()
+
+    teach.select('u-sr')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('img.max-w-none').attributes('src')).toBe(teach.alignImage?.url)
+    expect(wrapper.findAll('rect[data-roi]')).toHaveLength(0)
   })
 
   it('shows an empty viewer for a node without a picture', async () => {

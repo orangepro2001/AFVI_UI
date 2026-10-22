@@ -237,6 +237,39 @@ export interface ImageRef {
   height: number
 }
 
+/**
+ * One rectangle of the align picture, in pixels of the full-size TIFF (the XML's Left / Top and
+ * Right - Left / Bottom - Top).
+ */
+export interface AlignRoi {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/**
+ * How well the Metal / SR picture of a model could be built: "ok"; "partial" (one layer only);
+ * "missing" (no TIFF below the model's PxRepository folder); "unreadable" (none could be decoded).
+ * The last two show the empty default picture.
+ */
+export type AlignState = 'ok' | 'partial' | 'missing' | 'unreadable'
+
+/** What the Metal node of Align / ROI shows: the composed picture and its ROIs. */
+export interface AlignView {
+  /** Metal over SR (gold over green), or the empty default picture. */
+  image: ImageRef
+  /** The size of the TIFF the ROI coordinates refer to. */
+  size: { width: number; height: number }
+  state: AlignState
+  /** Why a layer could not be read. */
+  note?: string
+  rois: AlignRoi[]
+  /** The ROIs are the user's own list; false: they are the machine's. */
+  edited: boolean
+}
+
 export interface TeachSnapshot {
   unit: SpecSet
   dummy: SpecSet

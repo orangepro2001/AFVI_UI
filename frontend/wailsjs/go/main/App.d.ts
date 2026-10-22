@@ -8,6 +8,8 @@ export function CheckMachinePath(arg1:string):Promise<connector.PathCheck>;
 
 export function GetActiveModel():Promise<inventory.ActiveModel>;
 
+export function GetAlignView():Promise<inventory.AlignView>;
+
 export function GetAppInfo():Promise<main.AppInfo>;
 
 export function GetConnector():Promise<connector.Config>;
@@ -19,6 +21,10 @@ export function GetNodeAnalysis(arg1:string):Promise<inventory.NodeAnalysis>;
 export function GetTeachSpec():Promise<inventory.TeachSpec>;
 
 export function PickFolder(arg1:string):Promise<string>;
+
+export function ResetAlignRois():Promise<Array<inventory.AlignRoi>>;
+
+export function SaveAlignRois(arg1:Array<inventory.AlignRoi>):Promise<Array<inventory.AlignRoi>>;
 
 export function SaveConnector(arg1:connector.SaveInput):Promise<connector.Config>;
 

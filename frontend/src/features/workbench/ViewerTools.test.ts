@@ -77,3 +77,26 @@ describe('ViewerTools', () => {
     expect(wrapper.find('[aria-label="Rectangle"]').attributes('aria-pressed')).toBe('false')
   })
 })
+
+describe('ViewerTools live roi editing', () => {
+  it('marks the chosen tool and reports a pick', async () => {
+    const wrapper = mount(ViewerTools, { props: { variant: 'roi', live: true, tool: 'rect' } })
+    expect(wrapper.find('[aria-label="Rectangle"]').classes()).toContain('border-tool-active')
+    expect(wrapper.find('[aria-label="Select"]').classes()).not.toContain('border-tool-active')
+    await wrapper.find('[aria-label="Select"]').trigger('click')
+    expect(wrapper.emitted('update:tool')).toEqual([['select']])
+  })
+
+  it('enables trash and save only when allowed and emits actions', async () => {
+    const off = mount(ViewerTools, { props: { variant: 'roi', live: true } })
+    expect(off.find('[aria-label="Delete"]').attributes('disabled')).toBeDefined()
+    expect(off.find('[aria-label="Save"]').attributes('disabled')).toBeDefined()
+
+    const on = mount(ViewerTools, {
+      props: { variant: 'roi', live: true, canTrash: true, canSave: true },
+    })
+    await on.find('[aria-label="Delete"]').trigger('click')
+    await on.find('[aria-label="Save"]').trigger('click')
+    expect(on.emitted('action')).toEqual([['trash'], ['save']])
+  })
+})

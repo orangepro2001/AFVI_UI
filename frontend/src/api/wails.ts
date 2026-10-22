@@ -3,6 +3,8 @@ import { createConnectorApi } from './connector'
 import { createInventoryApi } from './inventory'
 import type {
   ActiveModel,
+  AlignRoi,
+  AlignView,
   ConnectorConfig,
   ModelEntry,
   NodeAnalysis,
@@ -12,12 +14,15 @@ import type {
 import {
   CheckMachinePath,
   GetActiveModel,
+  GetAlignView,
   GetAppInfo,
   GetConnector,
   GetModels,
   GetNodeAnalysis,
   GetTeachSpec,
   PickFolder,
+  ResetAlignRois,
+  SaveAlignRois,
   SaveConnector,
   SelectModel,
 } from '../../wailsjs/go/main/App'
@@ -32,7 +37,8 @@ type TeachSpec = Pick<TeachSnapshot, 'unit' | 'dummy'>
 
 /**
  * The methods the Go side implements today: getAppInfo, toggleFullscreen, the inventory calls
- * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis) and the four Connector calls
+ * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis, getAlignView, saveAlignRois,
+ * resetAlignRois) and the four Connector calls
  * (getConnector, checkMachinePath, saveConnector, pickFolder). Everything else stays with the mock
  * until Go has it (createApi merges the two), so this list is the honest state of the backend.
  *
@@ -53,6 +59,12 @@ export function createWailsApi(base: ApiClient): Partial<ApiClient> {
         selectModel: (name) => SelectModel(name) as unknown as Promise<ActiveModel>,
         getTeachSpec: () => GetTeachSpec() as unknown as Promise<TeachSpec>,
         getNodeAnalysis: (nodeId) => GetNodeAnalysis(nodeId) as unknown as Promise<NodeAnalysis>,
+        getAlignView: () => GetAlignView() as unknown as Promise<AlignView>,
+        saveAlignRois: (rois) =>
+          SaveAlignRois(rois as Parameters<typeof SaveAlignRois>[0]) as unknown as Promise<
+            AlignRoi[]
+          >,
+        resetAlignRois: () => ResetAlignRois() as unknown as Promise<AlignRoi[]>,
       },
       base,
     ),

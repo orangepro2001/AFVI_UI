@@ -17,7 +17,19 @@ interface ToolRow {
   right?: ToolItem
 }
 
-const props = defineProps<{ variant: Variant }>()
+const props = defineProps<{
+  variant: Variant
+  /** The roi variant edits boxes: select and rect pick the tool, trash and save are actions. */
+  live?: boolean
+  tool?: 'select' | 'rect'
+  canTrash?: boolean
+  canSave?: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:tool': [tool: 'select' | 'rect']
+  action: [action: 'trash' | 'save']
+}>()
 
 // Labels are placeholders: the design gives no names for the tools.
 const rows: ToolRow[] = [
@@ -87,12 +99,24 @@ const buttons = rows.flatMap((row) => [
 
 const selected = ref<ToolGlyph>('rect')
 
+const LIVE_ENABLED: readonly ToolGlyph[] = ['select', 'rect']
+
+function isLive() {
+  return props.live === true && props.variant === 'roi'
+}
+
 function isEnabled(glyph: ToolGlyph) {
+  if (isLive()) {
+    if (glyph === 'trash') return props.canTrash === true
+    if (glyph === 'save') return props.canSave === true
+    return LIVE_ENABLED.includes(glyph)
+  }
   return ENABLED[props.variant].includes(glyph)
 }
 
 function isSelected(glyph: ToolGlyph) {
   if (ACTION.includes(glyph)) return false
+  if (isLive()) return glyph === (props.tool ?? 'select')
   return isEnabled(glyph) && selected.value === glyph
 }
 
@@ -100,12 +124,21 @@ function isSelected(glyph: ToolGlyph) {
 // enabled button.
 function buttonClass(glyph: ToolGlyph) {
   if (!isEnabled(glyph)) return 'border-tool-disabled text-tool-disabled'
-  if (isSelected(glyph) && props.variant === 'draw') return 'border-tool-active text-tool-active'
+  if (isSelected(glyph) && (props.variant === 'draw' || isLive()))
+    return 'border-tool-active text-tool-active'
   return 'border-tool-border text-tool-icon'
 }
 
 function pick(glyph: ToolGlyph) {
-  if (!isEnabled(glyph) || ACTION.includes(glyph)) return
+  if (!isEnabled(glyph)) return
+  if (ACTION.includes(glyph)) {
+    if (isLive()) emit('action', glyph as 'trash' | 'save')
+    return
+  }
+  if (isLive()) {
+    emit('update:tool', glyph as 'select' | 'rect')
+    return
+  }
   selected.value = glyph
 }
 </script>

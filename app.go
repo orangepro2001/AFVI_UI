@@ -8,6 +8,7 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"afvi/ui/internal/appdata"
 	"afvi/ui/internal/connector"
 	"afvi/ui/internal/inventory"
 )
@@ -38,7 +39,11 @@ func NewApp(version string) *App {
 	if err != nil {
 		file = ""
 	}
-	return newAppWith(version, connector.NewHub(connector.NewStore(file)))
+	hub := connector.NewHub(connector.NewStore(file))
+	if dir, err := appdata.Path("roi"); err == nil {
+		hub.SetRoiDir(dir)
+	}
+	return newAppWith(version, hub)
 }
 
 // newAppWith creates an App around hub; tests inject a Hub with an in-memory store.
@@ -99,6 +104,34 @@ func (a *App) GetNodeAnalysis(nodeID string) (inventory.NodeAnalysis, error) {
 		return nil, err
 	}
 	return svc.Analysis(nodeID)
+}
+
+// GetAlignView returns the composed Metal / SR picture and the align ROIs of the active model.
+func (a *App) GetAlignView() (inventory.AlignView, error) {
+	svc, err := a.hub.Inventory()
+	if err != nil {
+		return inventory.AlignView{}, err
+	}
+	return svc.AlignView()
+}
+
+// SaveAlignRois saves the complete ROI list of the active model in the user's own file (never in
+// the machine's data) and returns the list as saved.
+func (a *App) SaveAlignRois(rois []inventory.AlignRoi) ([]inventory.AlignRoi, error) {
+	svc, err := a.hub.Inventory()
+	if err != nil {
+		return nil, err
+	}
+	return svc.SaveAlignRois(rois)
+}
+
+// ResetAlignRois drops the user's ROIs of the active model and returns the machine's own.
+func (a *App) ResetAlignRois() ([]inventory.AlignRoi, error) {
+	svc, err := a.hub.Inventory()
+	if err != nil {
+		return nil, err
+	}
+	return svc.ResetAlignRois()
 }
 
 // GetConnector returns the three hosts, their folders and the active host.

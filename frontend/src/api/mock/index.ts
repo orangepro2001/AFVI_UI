@@ -1,5 +1,6 @@
 import type { ApiClient } from '../client'
 import type { LogEntry, SystemStats } from '../types'
+import { createMockAlign } from './align'
 import { createNodeAnalysis } from './analysis'
 import { createCalibrationSnapshot } from './calibration'
 import { createConfig } from './config'
@@ -118,6 +119,8 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
     async getMedianSetup() {
       return createMedianSetup()
     },
+
+    ...createMockAlign(),
 
     ...createMockConnector(),
 

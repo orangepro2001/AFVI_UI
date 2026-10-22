@@ -22,11 +22,23 @@ type Hub struct {
 	loaded bool
 	svc    *inventory.Service
 	svcKey string
+	// roiDir is where the user's own ROI files go, one folder per host ("" = saving is refused).
+	roiDir string
 }
 
 // NewHub returns a Hub that reads and writes store.
 func NewHub(store *Store) *Hub {
 	return &Hub{store: store}
+}
+
+// SetRoiDir sets the folder for the user's own ROI files; each host gets a folder inside it. The
+// folder must not be inside a host's data: those are read only.
+func (h *Hub) SetRoiDir(dir string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.roiDir = dir
+	h.svc = nil
+	h.svcKey = ""
 }
 
 // loadLocked reads the configuration from the Store on first use.
@@ -175,6 +187,11 @@ func (h *Hub) Inventory() (*inventory.Service, error) {
 	svc, err := inventory.Open(filepath.Join(path, "PxInventory"))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", active, err)
+	}
+	if h.roiDir != "" {
+		if err := svc.SetUserDir(filepath.Join(h.roiDir, active)); err != nil {
+			return nil, fmt.Errorf("%s: %w", active, err)
+		}
 	}
 	h.svc = svc
 	h.svcKey = key

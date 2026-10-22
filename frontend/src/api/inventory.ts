@@ -1,7 +1,14 @@
 import type { ApiClient } from './client'
-import type { ActiveModel, ModelEntry, NodeAnalysis, TeachSnapshot } from './types'
+import type {
+  ActiveModel,
+  AlignRoi,
+  AlignView,
+  ModelEntry,
+  NodeAnalysis,
+  TeachSnapshot,
+} from './types'
 
-/** The five calls of the Go side, however they are reached (Wails binding or dev HTTP server). */
+/** The calls of the Go side, however they are reached (Wails binding or dev HTTP server). */
 export interface InventoryCalls {
   getModels(): Promise<ModelEntry[]>
   getActiveModel(): Promise<ActiveModel>
@@ -9,9 +16,13 @@ export interface InventoryCalls {
   /** What Go knows about the tree: the pictures of the Align / ROI nodes are not part of it. */
   getTeachSpec(): Promise<Pick<TeachSnapshot, 'unit' | 'dummy'>>
   getNodeAnalysis(nodeId: string): Promise<NodeAnalysis>
+  getAlignView(): Promise<AlignView>
+  saveAlignRois(rois: AlignRoi[]): Promise<AlignRoi[]>
+  resetAlignRois(): Promise<AlignRoi[]>
 }
 
-type Method = 'getModels' | 'getActiveModel' | 'selectModel' | 'getTeach' | 'getNodeAnalysis'
+type Method =
+  'getModels' | 'getActiveModel' | 'selectModel' | 'getTeach' | 'getNodeAnalysis' | 'getAlignView'
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -28,7 +39,14 @@ export function createInventoryApi(
   warn: (message: string) => void = (m) => console.warn(m),
 ): Pick<
   ApiClient,
-  'getModels' | 'getActiveModel' | 'selectModel' | 'getTeach' | 'getNodeAnalysis'
+  | 'getModels'
+  | 'getActiveModel'
+  | 'selectModel'
+  | 'getTeach'
+  | 'getNodeAnalysis'
+  | 'getAlignView'
+  | 'saveAlignRois'
+  | 'resetAlignRois'
 > {
   const warned = new Set<Method>()
 
@@ -87,5 +105,16 @@ export function createInventoryApi(
         () => calls.getNodeAnalysis(nodeId),
         () => base.getNodeAnalysis(nodeId),
       ),
+
+    getAlignView: () =>
+      call(
+        'getAlignView',
+        () => calls.getAlignView(),
+        () => base.getAlignView(),
+      ),
+
+    // A save or reset that fails must say so: falling back to the mock would look like it worked.
+    saveAlignRois: (rois) => calls.saveAlignRois(rois),
+    resetAlignRois: () => calls.resetAlignRois(),
   }
 }

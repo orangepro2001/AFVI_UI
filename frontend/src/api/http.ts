@@ -2,6 +2,8 @@ import type { ConnectorCalls } from './connector'
 import type { InventoryCalls } from './inventory'
 import type {
   ActiveModel,
+  AlignRoi,
+  AlignView,
   ConnectorConfig,
   ModelEntry,
   NodeAnalysis,
@@ -60,6 +62,9 @@ export function createHttpCalls(
     getTeachSpec: () => get<TeachSpec>('/api/GetTeachSpec'),
     getNodeAnalysis: (nodeId) =>
       get<NodeAnalysis>(`/api/GetNodeAnalysis?id=${encodeURIComponent(nodeId)}`),
+    getAlignView: () => get<AlignView>('/api/GetAlignView'),
+    saveAlignRois: (rois) => post<AlignRoi[]>('/api/SaveAlignRois', rois),
+    resetAlignRois: () => post<AlignRoi[]>('/api/ResetAlignRois', {}),
     getConnector: () => get<ConnectorConfig>('/api/GetConnector'),
     checkMachinePath: (path) =>
       get<PathCheck>(`/api/CheckMachinePath?path=${encodeURIComponent(path)}`),
