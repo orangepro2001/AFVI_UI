@@ -263,19 +263,21 @@ func repair(path string) {
 	if err != nil || bytes.HasSuffix(bytes.TrimRight(data, " \r\n"), []byte("</journal>")) {
 		return
 	}
+	// A half-written last line would break the XML: cut the file back to the last full line. This is
+	// done before the file is opened for appending: on Windows an O_APPEND handle may only append, and
+	// cutting a file needs the right to write.
+	if !bytes.HasSuffix(data, []byte("\n")) {
+		if cut := bytes.LastIndexByte(data, '\n'); cut >= 0 {
+			if err := os.Truncate(path, int64(cut+1)); err != nil {
+				return
+			}
+		}
+	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
 	if err != nil {
 		return
 	}
 	defer f.Close()
-	// A half-written last line would break the XML: cut the file back to the last full line.
-	if !bytes.HasSuffix(data, []byte("\n")) {
-		if cut := bytes.LastIndexByte(data, '\n'); cut >= 0 {
-			if err := f.Truncate(int64(cut + 1)); err != nil {
-				return
-			}
-		}
-	}
 	fmt.Fprintf(f, "<o k=\"session.unclosed\"/>\n%s", closing)
 }
 
