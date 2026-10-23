@@ -134,6 +134,26 @@ func (a *App) ResetAlignRois() ([]inventory.AlignRoi, error) {
 	return svc.ResetAlignRois()
 }
 
+// GetMedianView returns the Median picture of the active model for a light (1 is Light-1): the
+// preview the viewer shows and the size of the TIFF it stands for.
+func (a *App) GetMedianView(light int) (inventory.MedianView, error) {
+	svc, err := a.hub.Inventory()
+	if err != nil {
+		return inventory.MedianView{}, err
+	}
+	return svc.MedianView(light)
+}
+
+// MeasureGv measures the gray values (mean, standard deviation, range) of a box of the Median
+// picture of the active model for a light; the box is in pixels of the TIFF.
+func (a *App) MeasureGv(light int, box inventory.GvBox) (inventory.GvStats, error) {
+	svc, err := a.hub.Inventory()
+	if err != nil {
+		return inventory.GvStats{}, err
+	}
+	return svc.MeasureGv(light, box)
+}
+
 // GetConnector returns the three hosts, their folders and the active host.
 func (a *App) GetConnector() connector.Config {
 	return a.hub.Config()

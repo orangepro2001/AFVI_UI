@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"afvi/ui/internal/connector"
+	"afvi/ui/internal/inventory"
 )
 
 // newTestApp returns an App whose Hub reads the inventory test data from FM1.
@@ -134,6 +135,28 @@ func TestMissingInventory(t *testing.T) {
 	}
 	if _, err := app.GetNodeAnalysis("u-p3-c22"); !errors.Is(err, connector.ErrNotConfigured) {
 		t.Errorf("GetNodeAnalysis() error = %v, want ErrNotConfigured", err)
+	}
+	if _, err := app.GetMedianView(1); !errors.Is(err, connector.ErrNotConfigured) {
+		t.Errorf("GetMedianView() error = %v, want ErrNotConfigured", err)
+	}
+	if _, err := app.MeasureGv(1, inventory.GvBox{W: 1, H: 1}); !errors.Is(err, connector.ErrNotConfigured) {
+		t.Errorf("MeasureGv() error = %v, want ErrNotConfigured", err)
+	}
+}
+
+func TestMedianWithoutPictures(t *testing.T) {
+	app := newTestApp(t)
+
+	// The fixture has no Median pictures: the view says so, and measuring is an error.
+	view, err := app.GetMedianView(1)
+	if err != nil {
+		t.Fatalf("GetMedianView() error: %v", err)
+	}
+	if view.State != inventory.StateMissing || view.Note == "" || view.Image.URL != "" {
+		t.Errorf("GetMedianView() = %+v, want a missing picture", view)
+	}
+	if _, err := app.MeasureGv(1, inventory.GvBox{W: 10, H: 10}); err == nil {
+		t.Error("MeasureGv() without a picture returned no error")
 	}
 }
 

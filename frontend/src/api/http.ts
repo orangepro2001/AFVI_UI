@@ -5,6 +5,8 @@ import type {
   AlignRoi,
   AlignView,
   ConnectorConfig,
+  GvStats,
+  MedianView,
   ModelEntry,
   NodeAnalysis,
   PathCheck,
@@ -65,6 +67,8 @@ export function createHttpCalls(
     getAlignView: () => get<AlignView>('/api/GetAlignView'),
     saveAlignRois: (rois) => post<AlignRoi[]>('/api/SaveAlignRois', rois),
     resetAlignRois: () => post<AlignRoi[]>('/api/ResetAlignRois', {}),
+    getMedianView: (light) => get<MedianView>(`/api/GetMedianView?light=${light}`),
+    measureGv: (light, box) => post<GvStats>('/api/MeasureGv', { light, ...box }),
     getConnector: () => get<ConnectorConfig>('/api/GetConnector'),
     checkMachinePath: (path) =>
       get<PathCheck>(`/api/CheckMachinePath?path=${encodeURIComponent(path)}`),

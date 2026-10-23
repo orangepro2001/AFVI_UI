@@ -19,7 +19,10 @@ interface ToolRow {
 
 const props = defineProps<{
   variant: Variant
-  /** The roi variant edits boxes: select and rect pick the tool, trash and save are actions. */
+  /**
+   * The buttons work: select and rect pick the tool, trash (and, for the roi variant, save) are
+   * actions. Without it the column only shows the reference's buttons.
+   */
   live?: boolean
   tool?: 'select' | 'rect'
   canTrash?: boolean
@@ -102,13 +105,13 @@ const selected = ref<ToolGlyph>('rect')
 const LIVE_ENABLED: readonly ToolGlyph[] = ['select', 'rect']
 
 function isLive() {
-  return props.live === true && props.variant === 'roi'
+  return props.live === true
 }
 
 function isEnabled(glyph: ToolGlyph) {
   if (isLive()) {
     if (glyph === 'trash') return props.canTrash === true
-    if (glyph === 'save') return props.canSave === true
+    if (glyph === 'save') return props.variant === 'roi' && props.canSave === true
     return LIVE_ENABLED.includes(glyph)
   }
   return ENABLED[props.variant].includes(glyph)

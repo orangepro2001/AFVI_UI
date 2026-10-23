@@ -30,6 +30,11 @@ type Service struct {
 	// picture is the last composed align picture.
 	picture *composed
 
+	// medianMu serializes the decoding of Median pictures; medianCache holds the last few, most
+	// recently used last.
+	medianMu    sync.Mutex
+	medianCache []*medianEntry
+
 	cache *xmlCache
 }
 

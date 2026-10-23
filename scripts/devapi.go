@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"afvi/ui/internal/connector"
 	"afvi/ui/internal/inventory"
@@ -158,6 +159,34 @@ func apiHandler(hub *connector.Hub) http.HandlerFunc {
 				return nil, err
 			}
 			return svc.ResetAlignRois()
+		},
+		"GetMedianView": func(r *http.Request) (any, error) {
+			light, err := strconv.Atoi(r.URL.Query().Get("light"))
+			if err != nil {
+				return nil, &statusError{code: http.StatusBadRequest, msg: "light must be a number"}
+			}
+			svc, err := hub.Inventory()
+			if err != nil {
+				return nil, err
+			}
+			return svc.MedianView(light)
+		},
+		"MeasureGv": func(r *http.Request) (any, error) {
+			if r.Method != http.MethodPost {
+				return nil, errMethodNotAllowed
+			}
+			var in struct {
+				Light int `json:"light"`
+				inventory.GvBox
+			}
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				return nil, &statusError{code: http.StatusBadRequest, msg: err.Error()}
+			}
+			svc, err := hub.Inventory()
+			if err != nil {
+				return nil, err
+			}
+			return svc.MeasureGv(in.Light, in.GvBox)
 		},
 		"GetConnector": func(*http.Request) (any, error) {
 			return hub.Config(), nil

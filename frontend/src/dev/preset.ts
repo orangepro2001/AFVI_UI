@@ -1,9 +1,18 @@
 import type { App } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { useMeasureStore } from '@/stores/measure'
 import { useTeachStore } from '@/stores/teach'
 import { useWorkbenchStore, type ToolId } from '@/stores/workbench'
 
 const tools: ToolId[] = ['ruler', 'gv']
+
+/**
+ * What `top-toolbar-gv.png` and `top-toolbar-ruler.png` show on the picture, in pixels of the
+ * design's strip (WH 16384 x 12080): the GV box is x 220.3, y 113, 152.4 x 98.5 on the 726 x 534
+ * picture; the ruler's labels give its ends.
+ */
+const referenceGvBox = { x: 4972, y: 2556, w: 3439, h: 2228 }
+const referenceRuler = { from: { x: 5086, y: 2032 }, to: { x: 8590, y: 3836 } }
 
 /** ?node=<alias> picks a node of the Unit tree; any other value is taken as a node id. */
 const nodes: Record<string, string> = {
@@ -19,7 +28,7 @@ const nodes: Record<string, string> = {
  * Puts the application into a state a reference image shows, so that a design overlay can be
  * compared without clicking. Only imported under import.meta.env.DEV (main.ts).
  *
- *   ?tool=gv|ruler     toolbar tool
+ *   ?tool=gv|ruler     toolbar tool, with the box / line the reference image shows
  *   ?spec=dummy        Dummy tab of the specification
  *   ?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>   selected node of the tree
  *   ?pointer=x,y       the pointer has been over the picture: XY of the read-out bar
@@ -33,7 +42,11 @@ export function applyPreset(params: URLSearchParams, app: App): void {
   const pointer = params.get('pointer')?.split(',').map(Number)
 
   app.runWithContext(() => {
-    if (tool) useWorkbenchStore().toggleTool(tool)
+    if (tool) {
+      useWorkbenchStore().toggleTool(tool)
+      if (tool === 'gv') useMeasureStore().setGvBox(referenceGvBox)
+      else useMeasureStore().setRuler(referenceRuler)
+    }
     if (params.get('spec') === 'dummy') useTeachStore().mode = 'dummy'
     if (node) useTeachStore().select(nodes[node] ?? node)
     if (pointer && pointer.length === 2 && pointer.every(Number.isFinite)) {

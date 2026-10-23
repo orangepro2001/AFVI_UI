@@ -14,11 +14,15 @@ export function GetAppInfo():Promise<main.AppInfo>;
 
 export function GetConnector():Promise<connector.Config>;
 
+export function GetMedianView(arg1:number):Promise<inventory.MedianView>;
+
 export function GetModels():Promise<Array<inventory.ModelEntry>>;
 
 export function GetNodeAnalysis(arg1:string):Promise<inventory.NodeAnalysis>;
 
 export function GetTeachSpec():Promise<inventory.TeachSpec>;
+
+export function MeasureGv(arg1:number,arg2:inventory.GvBox):Promise<inventory.GvStats>;
 
 export function PickFolder(arg1:string):Promise<string>;
 

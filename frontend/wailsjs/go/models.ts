@@ -238,6 +238,128 @@ export namespace inventory {
 		    return a;
 		}
 	}
+	export class GvBox {
+	    x: number;
+	    y: number;
+	    w: number;
+	    h: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GvBox(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.w = source["w"];
+	        this.h = source["h"];
+	    }
+	}
+	export class GvRect {
+	    x: number;
+	    y: number;
+	    w: number;
+	    h: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GvRect(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.w = source["w"];
+	        this.h = source["h"];
+	    }
+	}
+	export class GvStats {
+	    box: GvRect;
+	    pixels: number;
+	    mean: number;
+	    std: number;
+	    min: number;
+	    max: number;
+	    saturatedHigh: number;
+	    saturatedLow: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GvStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.box = this.convertValues(source["box"], GvRect);
+	        this.pixels = source["pixels"];
+	        this.mean = source["mean"];
+	        this.std = source["std"];
+	        this.min = source["min"];
+	        this.max = source["max"];
+	        this.saturatedHigh = source["saturatedHigh"];
+	        this.saturatedLow = source["saturatedLow"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MedianView {
+	    light: number;
+	    image: AlignImage;
+	    size: PictureSize;
+	    state: string;
+	    note?: string;
+	    file?: string;
+	    lights: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MedianView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.light = source["light"];
+	        this.image = this.convertValues(source["image"], AlignImage);
+	        this.size = this.convertValues(source["size"], PictureSize);
+	        this.state = source["state"];
+	        this.note = source["note"];
+	        this.file = source["file"];
+	        this.lights = source["lights"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ModelEntry {
 	    index: string;
 	    created: string;

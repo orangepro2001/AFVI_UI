@@ -53,6 +53,17 @@ TEACH 右半部分（Specification 树、Align 行、Image Analysis 三张表）
 
 行数上限（实测）：upper 9、lower 9、channel 22，现有面板版式装得下，不需要滚动。
 
+## Median 图与 GV 测量
+
+工作台中间的图是当前模型、当前灯的 Median 图（见 [20-workbench.md](20-workbench.md) 第 7 节）。`internal/inventory/median.go`：
+
+- 位置：`PxRepository/<模型>/` 下（模型名或去掉修订号的基名，不分大小写）名为 `MEDIAN` 的目录（`2.0/Line/Top/Layer/MEDIAN`），最深 8 层；有多个时先选路径里带本模型 Surface（`Top` / `Bottom`）的，再选最浅的，再按名字。
+- 文件：`Median_<a>_<b>_<c>.tif(f)`（不分大小写），`c` 是灯号 − 1。同一个灯有多个文件时取 `<a>` 最小、再 `<b>` 最小的。其他文件（`Thumbs.db` 等）忽略。参考数据（`FM1`/`FM2`/`BM` 相同）是 `Median_0_1_0..2.tif`：5860×4020、8 位灰度、未压缩。
+- `GetMedianView(light)`：`state` 为 `ok` 时带预览（每个预览像素 = 4×4 个 TIFF 像素的均值，PNG data URL，显示 781×536）、`size`（TIFF 尺寸）、`file`、`lights`（本模型有哪几个灯）；`missing`（没有这个灯的图）、`unreadable`（TIFF 解不开，`note` 说原因）时没有图，调用本身不报错。
+- `MeasureGv(light, box)`：`box` 是 TIFF 像素的矩形（可带小数）；统计 `box` 向外取整并夹进图里（至少一个像素）的灰度：`pixels`、`mean`、`std`（总体）、`min`、`max`、`saturatedHigh`（=255）、`saturatedLow`（=0），以及实际量的 `box`。算法与 AFVI_TEACH 的 `core.MeasureGv` 相同。没有图时返回错误。
+- 解码结果按（路径 + 修改时间）缓存，最近 3 张；文件被替换后下一次请求重新读。永不写仓库。
+- 参考数据（Light-1）整图：均值 31.03、标准差 20.39、范围 12..168（与 Pillow 独立量得的一致，见 `TestRealMedianPicture`）；Light-2 均值 18.10、范围 9..29（很暗，是真实数据）；Light-3 均值 52.37。
+
 ## 数据位置
 
 后端只读 Connector 里选定主机的 `<路径>/PxInventory`（要有 `INSPECT_SPEC`）；配置、校验和切换见 [95-connector.md](95-connector.md)。

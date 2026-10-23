@@ -99,4 +99,34 @@ describe('ViewerTools live roi editing', () => {
     await on.find('[aria-label="Save"]').trigger('click')
     expect(on.emitted('action')).toEqual([['trash'], ['save']])
   })
+
+  it('lets the draw variant pick its tool and delete, once it is live', async () => {
+    const wrapper = mount(ViewerTools, {
+      props: { variant: 'draw', live: true, tool: 'rect', canTrash: false },
+    })
+    expect(wrapper.find('[aria-label="Rectangle"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[aria-label="Select"]').attributes('disabled')).toBeUndefined()
+    // Nothing to delete yet, and the draw variant has nothing to save.
+    expect(wrapper.find('[aria-label="Delete"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[aria-label="Save"]').attributes('disabled')).toBeDefined()
+    // The other tools of the reference are only drawn.
+    expect(wrapper.find('[aria-label="Circle"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[aria-label="Select"]').trigger('click')
+    expect(wrapper.emitted('update:tool')).toEqual([['select']])
+
+    await wrapper.setProps({ tool: 'select', canTrash: true })
+    expect(wrapper.find('[aria-label="Select"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[aria-label="Select"]').classes()).toContain('border-tool-active')
+    expect(wrapper.find('[aria-label="Rectangle"]').attributes('aria-pressed')).toBe('false')
+
+    await wrapper.find('[aria-label="Delete"]').trigger('click')
+    expect(wrapper.emitted('action')).toEqual([['trash']])
+  })
+
+  it('stays a picture of the reference without live', async () => {
+    const wrapper = mountTools('draw')
+    await wrapper.find('[aria-label="Delete"]').trigger('click')
+    expect(wrapper.emitted('action')).toBeUndefined()
+  })
 })

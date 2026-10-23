@@ -30,6 +30,20 @@ describe('createHttpCalls', () => {
     ])
   })
 
+  it('asks for the Median picture and posts the GV box with its light', async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => fakeResponse({ ok: true }))
+    const calls = createHttpCalls('http://127.0.0.1:8099', fetchFn)
+
+    await calls.getMedianView(3)
+    await calls.measureGv(2, { x: 1.5, y: 2, w: 30, h: 40 })
+
+    expect(fetchFn.mock.calls[0]?.[0]).toBe('http://127.0.0.1:8099/api/GetMedianView?light=3')
+    const [url, init] = fetchFn.mock.calls[1] ?? []
+    expect(url).toBe('http://127.0.0.1:8099/api/MeasureGv')
+    expect(init?.method).toBe('POST')
+    expect(JSON.parse(String(init?.body))).toEqual({ light: 2, x: 1.5, y: 2, w: 30, h: 40 })
+  })
+
   it('throws the error text of a non-2xx JSON body', async () => {
     const fetchFn = vi.fn(async () => fakeResponse({ error: 'no PxInventory' }, 404))
     const calls = createHttpCalls('http://x', fetchFn)

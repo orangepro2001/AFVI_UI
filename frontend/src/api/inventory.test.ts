@@ -3,7 +3,7 @@ import { devApiUrl } from './index'
 import type { InventoryCalls } from './inventory'
 import { createInventoryApi } from './inventory'
 import { createMockApi } from './mock'
-import type { ActiveModel, NodeAnalysis, TeachSnapshot } from './types'
+import type { ActiveModel, GvStats, MedianView, NodeAnalysis, TeachSnapshot } from './types'
 
 const MODEL: ActiveModel = {
   name: 'TEST1020-00',
@@ -30,6 +30,26 @@ function emptyAnalysis(): NodeAnalysis {
   return { 1: empty, 2: empty, 3: empty }
 }
 
+const median: MedianView = {
+  light: 1,
+  image: { url: 'data:image/png;base64,AA==', width: 781, height: 536 },
+  size: { width: 5860, height: 4020 },
+  state: 'ok',
+  file: 'Median_0_1_0.tif',
+  lights: [1, 2, 3],
+}
+
+const stats: GvStats = {
+  box: { x: 10, y: 20, w: 30, h: 40 },
+  pixels: 1200,
+  mean: 31,
+  std: 2,
+  min: 20,
+  max: 40,
+  saturatedHigh: 0,
+  saturatedLow: 0,
+}
+
 function failingCalls(overrides: Partial<InventoryCalls> = {}): InventoryCalls {
   const fail = () => Promise.reject(new Error('no PxInventory'))
   return {
@@ -41,6 +61,8 @@ function failingCalls(overrides: Partial<InventoryCalls> = {}): InventoryCalls {
     getAlignView: fail,
     saveAlignRois: fail,
     resetAlignRois: fail,
+    getMedianView: fail,
+    measureGv: fail,
     ...overrides,
   }
 }
@@ -65,6 +87,8 @@ describe('createInventoryApi', () => {
       getAlignView: vi.fn(async () => base.getAlignView()),
       saveAlignRois: vi.fn(async () => []),
       resetAlignRois: vi.fn(async () => []),
+      getMedianView: vi.fn(async () => median),
+      measureGv: vi.fn(async () => stats),
     }
     const warn = vi.fn()
     const api = createInventoryApi(calls, base, warn)
@@ -78,7 +102,49 @@ describe('createInventoryApi', () => {
     expect(teach.unit.tree).toEqual([])
 
     expect(await api.getNodeAnalysis('u-p1')).toEqual(emptyAnalysis())
+
+    expect(await api.getMedianView(1)).toEqual(median)
+    expect(await api.measureGv(1, { x: 10, y: 20, w: 30, h: 40 })).toEqual(stats)
+    expect(calls.measureGv).toHaveBeenCalledWith(1, { x: 10, y: 20, w: 30, h: 40 })
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('measures where the Median picture came from', async () => {
+    const base = createMockApi({ live: false })
+    const baseMeasure = vi.spyOn(base, 'measureGv').mockResolvedValue(stats)
+    const goMeasure = vi.fn(async () => ({ ...stats, mean: 99 }))
+    let goFails = false
+    const calls = failingCalls({
+      getMedianView: async () => {
+        if (goFails) throw new Error('no PxInventory')
+        return median
+      },
+      measureGv: goMeasure,
+    })
+    const api = createInventoryApi(calls, base, vi.fn())
+    const box = { x: 0, y: 0, w: 5, h: 5 }
+
+    // The picture is Go's: Go measures it, a failure is reported and never papered over.
+    await api.getMedianView(1)
+    expect((await api.measureGv(1, box)).mean).toBe(99)
+    expect(baseMeasure).not.toHaveBeenCalled()
+
+    // The picture is the mock's (Go has none): the mock measures it.
+    goFails = true
+    expect((await api.getMedianView(1)).state).toBe('ok')
+    expect((await api.measureGv(1, box)).mean).toBe(31)
+    expect(goMeasure).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a failed measurement instead of falling back', async () => {
+    const base = createMockApi({ live: false })
+    const api = createInventoryApi(
+      failingCalls({ getMedianView: async () => median }),
+      base,
+      vi.fn(),
+    )
+    await api.getMedianView(1)
+    await expect(api.measureGv(1, { x: 0, y: 0, w: 5, h: 5 })).rejects.toThrow('no PxInventory')
   })
 
   it('falls back to the base and warns once per method', async () => {
@@ -91,12 +157,20 @@ describe('createInventoryApi', () => {
     expect((await api.selectModel('TEST1020-00')).name).toBe('TEST1020-00')
     expect((await api.getTeach()).unit.tree).toEqual((await base.getTeach()).unit.tree)
     await api.getNodeAnalysis('u-p1')
+    expect((await api.getMedianView(2)).light).toBe(2)
 
     // A second failure on the same method does not warn again.
     await api.getModels()
 
-    expect(warn).toHaveBeenCalledTimes(5)
-    const methods = ['getModels', 'getActiveModel', 'selectModel', 'getTeach', 'getNodeAnalysis']
+    expect(warn).toHaveBeenCalledTimes(6)
+    const methods = [
+      'getModels',
+      'getActiveModel',
+      'selectModel',
+      'getTeach',
+      'getNodeAnalysis',
+      'getMedianView',
+    ]
     for (const method of methods) {
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining(`inventory.${method} failed, using the mock: no PxInventory`),

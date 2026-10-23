@@ -270,6 +270,54 @@ export interface AlignView {
   edited: boolean
 }
 
+/**
+ * How well the Median picture of a light could be read: "ok"; "missing" (the model has none for this
+ * light); "unreadable" (the TIFF could not be decoded). Only "ok" carries a picture.
+ */
+export type MedianState = 'ok' | 'missing' | 'unreadable'
+
+/**
+ * The Median picture of one light, the picture of the workbench viewer. `size` is the size of the
+ * TIFF in the repository: the XY of the read-out bar, the ruler and the GV box are pixels of it,
+ * while `image` is the (smaller) preview that is shown.
+ */
+export interface MedianView {
+  /** The light that was asked for (1 is Light-1). */
+  light: number
+  image: ImageRef
+  size: { width: number; height: number }
+  state: MedianState
+  /** Why the picture could not be read. */
+  note?: string
+  /** The file that was read. */
+  file?: string
+  /** The lights the model has a Median picture for, ascending. */
+  lights: number[]
+}
+
+/** A rectangle of the Median picture, in pixels of the TIFF; fractions are allowed. */
+export interface GvBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** The gray values of one box of the Median picture. */
+export interface GvStats {
+  /** The area that was measured: the box rounded outwards and kept inside the picture. */
+  box: GvBox
+  pixels: number
+  mean: number
+  /** Standard deviation over the pixels of the box. */
+  std: number
+  min: number
+  max: number
+  /** Pixels at 255 and at 0. */
+  saturatedHigh: number
+  saturatedLow: number
+}
+
 export interface TeachSnapshot {
   unit: SpecSet
   dummy: SpecSet

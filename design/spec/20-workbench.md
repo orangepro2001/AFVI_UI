@@ -50,7 +50,7 @@ D1 红色实心圆点（`bg-tool-red`，边框 `border-tool-red`）、D2 空心�
 
 ## 4. 查看器 `features/workbench/StripViewer.vue`（x 207..1266，y 163..725，`bg-muted`）
 
-PCB 图像居中、自然尺寸 726×535，位置 x 373..1099、y 178..712，素材 `assets/mock/strip-image.png`（`image-rendering: auto`）。
+PCB 图像居中、自然尺寸 726×535，位置 x 373..1099、y 178..712，素材 `assets/mock/strip-image.png`（`image-rendering: auto`）。**这是浏览器里（模拟后端）的图；Wails 窗口里中间的图是仓库里当前模型、当前灯的 Median 图**（见本文件第 7 节），位置同样 `top 15`、水平居中，显示尺寸 781×536（与 Align 的合成图同宽）。
 插槽 `overlay`：叠在图像上的绝对定位层（页面/工具往里放 ROI、标尺）。指针移动时更新统计栏的 XY（鼠标位置按 `image.width/height` 与 `readout.wh` 缩放并加上 strip 偏移）；RGB 在图片加载后用 canvas 取样（浏览器里可用，测试里跳过）。
 
 查看器内的 **工具面板** `ViewerTools.vue`（只在 TEACH 页显示，见 30-teach.md）。
@@ -69,3 +69,40 @@ PCB 图像居中、自然尺寸 726×535，位置 x 373..1099、y 178..712，素
 `stores/workbench.ts`，`api/mock/workbench.ts`（`createWorkbenchSnapshot()`：header `TEST1020-00` / `TEST3` / `1`；image 726×535 = `import stripImage from '@/assets/mock/strip-image.png'`；thumbnail 89×272；cells 6×28、view {column:2,row:7,columns:3,rows:3}；readout cell 18、strip {29786,43278}、wh {16384,12080}、xy {15116,11957}、rgb [31,31,31]、avgGv 0、stdGv 0），以及对应的 `*.test.ts`。
 修改：`api/client.ts`（加 `getWorkbench(): Promise<WorkbenchSnapshot>`）、`api/mock/index.ts`、`stores/machine.ts` 或新 store（加载 workbench 快照）、`pages/{Teach,Review,Calibrate,Settings}Page.vue`（改用 `WorkbenchLayout`，右侧栏先放原来的占位）。
 素材的 `import` 走 Vite（`vite/client` 类型已有；vitest 下返回路径字符串）。
+
+## 7. 中间的图（Median 图）与量尺 / GV 工具
+
+### 图
+
+`stores/workbench.ts` 的 `frame` 是查看器当前显示的图和它代表的像素尺寸：
+
+- 后端有当前模型、当前灯的 Median 图（`PxRepository/<模型>/…/MEDIAN/Median_<a>_<b>_<c>.tif`，`c` = 灯号 − 1，即工具栏三个灯泡：`c=0` Light-1 …）时，`frame` 是它的预览（Go 把 TIFF 缩到 1/4 再放成 781 宽；TIFF 本身 5860×4020、8 位灰度）。`size` = TIFF 的像素尺寸，读数栏的 **WH** 就是它，**XY** 是指针在 TIFF 里的像素，**RGB** 是指针下预览像素的灰度（三个分量相同），STRIP 仍是 XY 加上快照的偏移。
+- 没有（`state` 为 `missing` / `unreadable`，或调用失败）时退回设计图里的条带图（`size` 16384×12080），GV 不能量（图上写 “No Median picture of Light-n”），量尺照常可用。
+- 换灯泡 → 重新取那个灯的图（旧的答案晚到会被丢掉）；换模型 / 换主机 → 重新取，并清掉量尺和 GV 框。
+- 仓库只读：Go 从不写 `PxRepository`。TIFF 解码后在内存里留最近 3 张（每张 24 MB）。
+
+### GV 工具（工具栏 A3）
+
+`stores/measure.ts`；叠加层 `features/workbench/GvLayer.vue`，右侧工具列是 `ViewerTools`（`draw` 变体，`live`）。框的坐标是 **TIFF 像素**，显示时乘 781 / 5860。
+
+- 工具列：`select`（移动框）与 `rect`（画框）二选一，默认 `rect`（参考图里高亮的就是它）；`trash` 在有框时可用；其余按钮只是画出来。
+- `rect`：在图上按下拖动画一个框（替换旧框，**小于 3 个屏幕像素的拖动当作点击，旧框保留**）；松开后工具仍是 `rect`。`select`：拖框身体移动，背景上什么也不做。8 个抓手（r=4，命中区 r=9）在两种工具下都能缩放，框最小 1 个 TIFF 像素，且不会翻转。
+- 框内正中是 `GV : <均值取整>`（黑底 60%，参考图 38×14），读数栏的 **Avg. GV** 是同一个整数，**Std. GV** 保留两位。没有框或没量到时是 `0` / `0.00`，标签是 `GV : -`。鼠标悬停在框上有一条 tooltip：Avg / Std / Min / Max / 像素数 / 实际测量的框。
+- 数值由 Go 在**完整 TIFF** 上量（`MeasureGv`，移植自 AFVI_TEACH 的 `core.MeasureGv`）：框向外取整并夹进图里，至少一个像素，总体标准差。拖动中实时重量，同一时刻只有一个请求在途、只问最新的框；错误显示在图底部。
+- 键盘：`Delete` / `Backspace` 删框；方向键移动 1 像素，Shift 10 像素；`Esc` 取消正在进行的拖动（框回到拖动前）。输入框里不响应。
+- 换灯泡 → 同一个框在新灯的 Median 图上重量。
+
+### 量尺工具（工具栏 A2）
+
+叠加层 `features/workbench/RulerLayer.vue`，没有右侧工具列（参考图里没有）。端点是 **TIFF 像素的整数**。
+
+- 在图上按下拖动画线（替换旧线）；线最短 3 个屏幕像素，**更短的当作点击，并清掉量尺**。端点停在图的边缘。
+- 画出：红线 2px、两端圆点（`overlay-handle`，r=4）、端点坐标 `(x, y)`（`overlay-text`，绿）、中点旁的距离 `3941.12px`（`overlay-measure`，青，两位小数，单位是 TIFF 像素）。参考图的数据 (5086, 2032) → (8590, 3836) 正好是 3941.12px。
+- 端点文字写在**背离另一端**的一侧：上左端写在左上、下右端写在右下（与参考图一致），反方向画时跟着换边（`endLabel`）。
+- 拖端点只动那一端；拖线身整体平移（保持形状，停在图边）。最后画出或抓住的端点是方向键移动的端点（1 像素，Shift 10）。`Delete` / `Backspace` 清线，`Esc` 取消拖动。
+- 量尺不依赖 Median 图：退回设计图条带时用 16384×12080 的像素。
+
+两个工具的内容在切换工具后保留（只显示当前工具的），换模型 / 主机清掉。开发预设 `?tool=gv` / `?tool=ruler` 会放上参考图里的框（x 220.3、y 113、152.4×98.5）和线。
+
+涉及的文件：`stores/measure.ts`、`features/workbench/{GvLayer,RulerLayer,measure-geometry}`、`layouts/WorkbenchLayout.vue`（四个工作台页共用，所以 REVIEW / CALIBRATE / SETTINGS 的工具栏也能用）、`api/mock/measure.ts`；Go：`internal/inventory/median.go`。
+

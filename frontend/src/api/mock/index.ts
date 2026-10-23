@@ -7,6 +7,7 @@ import { createConfig } from './config'
 import { createMockConnector } from './connector'
 import { HISTORY_LENGTH, clamp, createHomeSnapshot, createRandom } from './data'
 import { createMedianSetup } from './median'
+import { createMockMeasure } from './measure'
 import { createActiveModel, createModels } from './models'
 import { createDefects } from './review'
 import { createSession } from './session'
@@ -121,6 +122,8 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
     },
 
     ...createMockAlign(),
+
+    ...createMockMeasure(),
 
     ...createMockConnector(),
 

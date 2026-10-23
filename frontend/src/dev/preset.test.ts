@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
 import { useAppStore } from '@/stores/app'
+import { useMeasureStore } from '@/stores/measure'
+import { useWorkbenchStore } from '@/stores/workbench'
 import { applyPreset } from './preset'
 
 function withApp() {
@@ -111,5 +113,43 @@ describe('applyPreset dialogs', () => {
     expect(store.grabOpen).toBe(false)
     expect(store.generateOpen).toBe(false)
     expect(store.busy).toBe(false)
+  })
+})
+
+describe('applyPreset tools', () => {
+  it('picks the ruler with the line of the reference image', () => {
+    const app = withApp()
+    preset({ tool: 'ruler' }, app)
+    const { workbench, measure } = app.runWithContext(() => ({
+      workbench: useWorkbenchStore(),
+      measure: useMeasureStore(),
+    }))
+    expect(workbench.tool).toBe('ruler')
+    expect(measure.ruler).toEqual({ from: { x: 5086, y: 2032 }, to: { x: 8590, y: 3836 } })
+    expect(measure.gvBox).toBeNull()
+  })
+
+  it('picks GV with the box of the reference image', () => {
+    const app = withApp()
+    preset({ tool: 'gv' }, app)
+    const { workbench, measure } = app.runWithContext(() => ({
+      workbench: useWorkbenchStore(),
+      measure: useMeasureStore(),
+    }))
+    expect(workbench.tool).toBe('gv')
+    expect(measure.gvBox).toEqual({ x: 4972, y: 2556, w: 3439, h: 2228 })
+    expect(measure.ruler).toBeNull()
+  })
+
+  it('leaves the tools alone without ?tool', () => {
+    const app = withApp()
+    preset({}, app)
+    const { workbench, measure } = app.runWithContext(() => ({
+      workbench: useWorkbenchStore(),
+      measure: useMeasureStore(),
+    }))
+    expect(workbench.tool).toBeNull()
+    expect(measure.gvBox).toBeNull()
+    expect(measure.ruler).toBeNull()
   })
 })

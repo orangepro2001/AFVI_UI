@@ -4,7 +4,6 @@ import type { ImageRef } from '@/api/types'
 import WorkbenchLayout from '@/layouts/WorkbenchLayout.vue'
 import AlignRoiLayer from '@/features/teach/AlignRoiLayer.vue'
 import TeachPanel from '@/features/teach/TeachPanel.vue'
-import ViewerOverlay from '@/features/workbench/ViewerOverlay.vue'
 import ViewerTools from '@/features/workbench/ViewerTools.vue'
 import { useAlignRoiStore } from '@/stores/alignRoi'
 import { useTeachStore } from '@/stores/teach'
@@ -60,22 +59,17 @@ const readoutVariant = computed<'full' | 'xy' | 'none'>(() => {
   if (mode.value === 'align') return 'xy'
   return 'none'
 })
-
-const showTools = computed(
-  () => mode.value === 'align' || (mode.value === 'strip' && workbench.tool === 'gv'),
-)
 </script>
 
 <template>
   <WorkbenchLayout :image="viewerImage" :image-top="imageTop" :readout="readoutVariant">
     <template #overlay>
       <AlignRoiLayer v-if="roiEditing" />
-      <ViewerOverlay v-else :tool="mode === 'strip' ? workbench.tool : null" />
     </template>
     <template #tools>
       <ViewerTools
-        v-if="showTools"
-        :variant="mode === 'align' ? 'roi' : 'draw'"
+        v-if="mode === 'align'"
+        variant="roi"
         :live="roiEditing"
         :tool="alignRoi.tool"
         :can-trash="alignRoi.selectedId !== null"

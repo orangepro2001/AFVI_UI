@@ -17,7 +17,7 @@ pages/                        路由页面：布局 + 面板
 layouts/                      应用外壳：AppShell、AppHeader、AppNav、SideRail
         ↓ 只依赖
 api/                          ApiClient 接口 + 模拟后端 + Wails 适配器
-stores/                       Pinia：app（应用信息、时钟）、machine（设备数据）、workbench（四个工作台页共用的条带与工具栏）、teach / review / calibration / settings（各页右侧栏）
+stores/                       Pinia：app（应用信息、时钟）、machine（设备数据）、workbench（四个工作台页共用的条带、Median 图与工具栏）、measure（量尺与 GV 框）、teach / review / calibration / settings（各页右侧栏）
 ```
 
 依赖方向只能向下：页面不直接 import `wailsjs`，部件不直接 import store，`api/types.ts` 不 import 任何 Vue 东西。
@@ -53,6 +53,8 @@ interface ApiClient {
   getAppInfo(): Promise<AppInfo>
   getHomeSnapshot(): Promise<HomeSnapshot>
   getWorkbench(): Promise<WorkbenchSnapshot>   // 条带图、缩略图、单元格图、读数
+  getMedianView(light): Promise<MedianView>    // 中间的图：仓库里当前模型、当前灯的 Median 图（Go）
+  measureGv(light, box): Promise<GvStats>      // 在完整 TIFF 上量一个框的灰度（Go）
   getTeach(): Promise<TeachSnapshot>           // Unit / Dummy 规格树（Go：解析 PxInventory）
   getNodeAnalysis(nodeId): Promise<NodeAnalysis> // 选中节点的三张分析表（Go）
   getModels(): Promise<ModelEntry[]>           // "Choose Model Names" 的列表（Go）
@@ -70,7 +72,7 @@ interface ApiClient {
 数据类型在 `api/types.ts`，是将来 Go 要实现的契约。
 
 - `api/mock/`：带种子的模拟后端（`data.ts` 造数据，`index.ts` 让图表和日志动起来）。浏览器里全部由它回答。
-- `api/wails.ts`：只包含 Go 已经实现的方法：`getAppInfo`、用 Wails 运行时实现的全屏切换，解析 `PxInventory` 的五个方法（`getModels`、`getActiveModel`、`selectModel`、`getTeach`、`getNodeAnalysis`，实现在 `internal/inventory`，映射规则见 `design/spec/90-inventory.md`），以及 Connector 的四个方法（`getConnector`、`checkMachinePath`、`saveConnector`、`pickFolder`，实现在 `internal/connector`，见 `design/spec/95-connector.md`）。`api/inventory.ts` 把这五个调用包起来：Go 报错（比如没有配置主机或找不到 `PxInventory`）就退回模拟数据并在控制台警告一次；Align / ROI 的三张图 Go 还没有，仍取自模拟。Connector 的四个方法不退回模拟数据，Go 的错误原样抛给对话框。
+- `api/wails.ts`：只包含 Go 已经实现的方法：`getAppInfo`、用 Wails 运行时实现的全屏切换，解析 `PxInventory` 的五个方法（`getModels`、`getActiveModel`、`selectModel`、`getTeach`、`getNodeAnalysis`，实现在 `internal/inventory`，映射规则见 `design/spec/90-inventory.md`）、Align 图与 ROI 的三个方法，以及 Median 图与 GV 测量的两个方法（`getMedianView`、`measureGv`；Go 取不到图时 `getMedianView` 退回模拟，`measureGv` 跟着那张图走：图来自模拟就由模拟量，来自 Go 就由 Go 量，失败不退回），以及 Connector 的四个方法（`getConnector`、`checkMachinePath`、`saveConnector`、`pickFolder`，实现在 `internal/connector`，见 `design/spec/95-connector.md`）。`api/inventory.ts` 把这五个调用包起来：Go 报错（比如没有配置主机或找不到 `PxInventory`）就退回模拟数据并在控制台警告一次；Align / ROI 的三张图 Go 还没有，仍取自模拟。Connector 的四个方法不退回模拟数据，Go 的错误原样抛给对话框。
 - `api/index.ts` 的 `createApi()`：浏览器里是模拟后端；Wails 窗口里是 `{ ...mock, ...wails }`，也就是 Go 实现了的用 Go，其余仍用模拟。这样可以逐个方法迁移，窗口里的界面始终是完整的。
 - 浏览器里看真实数据：`go run scripts/devapi.go`（默认 `127.0.0.1:8099`，`-config <文件>` 指定 Connector 配置文件；缺省是仓库里被 git 忽略的 `.dev/connector.json`，第一次启动时用 `design/repo/{FM1,FM2,BM}` 生成，从不读写已安装应用的 `%AppData%\AFVI-UI\connector.json`；在仓库根目录运行），再打开 `http://localhost:5173/?api=http://127.0.0.1:8099`（`scripts/snap.sh --query 'freeze&api=http://127.0.0.1:8099'` 同理）。只有开发构建认 `?api=`；连不上就退回模拟数据。数据位置不再是环境变量或目录查找，而是 Connector 里的配置（本地 JSON 文件），配置与切换见 `design/spec/95-connector.md`。
 - 页面用 `useApi()`（`provide/inject`）取客户端，测试里可以直接注入假实现。
@@ -87,7 +89,7 @@ interface ApiClient {
 
 - `router/routes.ts` 是页面表。每条记录 `meta.tab` 有值就会出现在顶部页签，顺序即表的顺序；页面组件是懒加载的。
 - hash 路由（`createWebHashHistory`）：Wails 从内嵌资源加载，没有服务器做回退。
-- 五个页面都已按设计图实现。HOME 是自己的布局；TEACH、REVIEW、CALIBRATE、SETTINGS 共用 `layouts/WorkbenchLayout.vue`（信息条、工具栏、缩略图、条带查看器、读数条、日志），只有右侧栏（`#aside` 槽）不同：`features/teach/TeachPanel`、`features/review/ReviewPanel`、`features/calibrate/CalibratePanel`、`features/settings/SettingsPanel`。查看器上的工具面板和 ROI/标尺叠加物是 `features/workbench/ViewerTools`、`ViewerOverlay`（TEACH 页的 `#tools`、`#overlay` 槽）。
+- 五个页面都已按设计图实现。HOME 是自己的布局；TEACH、REVIEW、CALIBRATE、SETTINGS 共用 `layouts/WorkbenchLayout.vue`（信息条、工具栏、缩略图、条带查看器、读数条、日志），只有右侧栏（`#aside` 槽）不同：`features/teach/TeachPanel`、`features/review/ReviewPanel`、`features/calibrate/CalibratePanel`、`features/settings/SettingsPanel`。查看器上的工具面板是 `features/workbench/ViewerTools`；量尺与 GV 的叠加层 `RulerLayer`、`GvLayer` 和 GV 的工具列由 `WorkbenchLayout` 自己在显示条带时放上（所以四个工作台页的工具栏都能用，见 `design/spec/20-workbench.md` 第 7 节），TEACH 页只在 `#tools`、`#overlay` 槽里放 Align 的 ROI 编辑。
 - 占位页 `PlaceholderPage` 留给以后的新页面。
 
 ### 加一个页面

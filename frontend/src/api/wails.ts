@@ -6,6 +6,8 @@ import type {
   AlignRoi,
   AlignView,
   ConnectorConfig,
+  GvStats,
+  MedianView,
   ModelEntry,
   NodeAnalysis,
   PathCheck,
@@ -17,9 +19,11 @@ import {
   GetAlignView,
   GetAppInfo,
   GetConnector,
+  GetMedianView,
   GetModels,
   GetNodeAnalysis,
   GetTeachSpec,
+  MeasureGv,
   PickFolder,
   ResetAlignRois,
   SaveAlignRois,
@@ -38,7 +42,7 @@ type TeachSpec = Pick<TeachSnapshot, 'unit' | 'dummy'>
 /**
  * The methods the Go side implements today: getAppInfo, toggleFullscreen, the inventory calls
  * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis, getAlignView, saveAlignRois,
- * resetAlignRois) and the four Connector calls
+ * resetAlignRois, getMedianView, measureGv) and the four Connector calls
  * (getConnector, checkMachinePath, saveConnector, pickFolder). Everything else stays with the mock
  * until Go has it (createApi merges the two), so this list is the honest state of the backend.
  *
@@ -65,6 +69,9 @@ export function createWailsApi(base: ApiClient): Partial<ApiClient> {
             AlignRoi[]
           >,
         resetAlignRois: () => ResetAlignRois() as unknown as Promise<AlignRoi[]>,
+        getMedianView: (light) => GetMedianView(light) as unknown as Promise<MedianView>,
+        measureGv: (light, box) =>
+          MeasureGv(light, box as Parameters<typeof MeasureGv>[1]) as unknown as Promise<GvStats>,
       },
       base,
     ),

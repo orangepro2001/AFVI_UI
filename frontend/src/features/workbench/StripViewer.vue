@@ -3,18 +3,23 @@ import { ref } from 'vue'
 import { cn } from 'cn'
 import type { HTMLAttributes } from 'vue'
 import type { ImageRef } from '@/api/types'
+import { grayOfImage } from '@/lib/gray'
+import type { GrayPixels } from '@/lib/gray'
 
 const props = withDefaults(
   defineProps<{
     image: ImageRef | null
     top?: number
+    /** The picture is gray and its values are the read-out: the pointer event carries the value under it. */
+    sample?: boolean
     class?: HTMLAttributes['class']
   }>(),
-  { top: 15, class: undefined },
+  { top: 15, sample: false, class: undefined },
 )
 
 const emit = defineEmits<{
-  pointer: [x: number, y: number]
+  /** (x, y) in pixels of the shown picture; `gray` only when `sample` is set and the picture can be read. */
+  pointer: [x: number, y: number, gray?: number]
 }>()
 
 const imageEl = ref<HTMLImageElement | null>(null)
@@ -25,6 +30,21 @@ const imageStyle = () => ({
   top: `${props.top}px`,
 })
 
+// The gray values of the shown picture, read the first time the pointer needs one.
+let sampled: { url: string; pixels: GrayPixels | null } | null = null
+
+function grayAt(el: HTMLImageElement, fx: number, fy: number): number | undefined {
+  if (!props.sample || !props.image) return undefined
+  if (sampled?.url !== props.image.url || (sampled.pixels === null && el.complete)) {
+    sampled = { url: props.image.url, pixels: grayOfImage(el) }
+  }
+  const pixels = sampled.pixels
+  if (!pixels) return undefined
+  const px = Math.min(pixels.width - 1, Math.floor(fx * pixels.width))
+  const py = Math.min(pixels.height - 1, Math.floor(fy * pixels.height))
+  return pixels.data[py * pixels.width + px]
+}
+
 function onPointerMove(event: PointerEvent) {
   const el = imageEl.value
   if (!el) return
@@ -32,7 +52,7 @@ function onPointerMove(event: PointerEvent) {
   const x = event.clientX - rect.left
   const y = event.clientY - rect.top
   if (x < 0 || y < 0 || x > rect.width || y > rect.height) return
-  emit('pointer', Math.round(x), Math.round(y))
+  emit('pointer', Math.round(x), Math.round(y), grayAt(el, x / rect.width, y / rect.height))
 }
 </script>
 

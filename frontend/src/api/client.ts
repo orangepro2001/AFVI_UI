@@ -10,9 +10,12 @@ import type {
   ConnectorConfig,
   ConnectorInput,
   DefectRow,
+  GvBox,
+  GvStats,
   HomeSnapshot,
   LogEntry,
   MedianSetup,
+  MedianView,
   ModelEntry,
   NodeAnalysis,
   PathCheck,
@@ -49,6 +52,16 @@ export interface ApiClient {
   saveAlignRois(rois: AlignRoi[]): Promise<AlignRoi[]>
   /** Drops the user's list: the machine's own ROIs are back. */
   resetAlignRois(): Promise<AlignRoi[]>
+  /**
+   * The Median picture of the loaded model for one light (1 is Light-1): the picture of the
+   * workbench viewer. A model without one answers with a state other than "ok".
+   */
+  getMedianView(light: number): Promise<MedianView>
+  /**
+   * The gray values of a box of that Median picture, measured on the full-size TIFF (the viewer only
+   * has a preview). The box is in pixels of `MedianView.size`.
+   */
+  measureGv(light: number, box: GvBox): Promise<GvStats>
   /** The signed-in user and the accounts of the "Log in/out" dialog. */
   getSession(): Promise<SessionInfo>
   /** The models of the "Choose Model Names" dialog. */

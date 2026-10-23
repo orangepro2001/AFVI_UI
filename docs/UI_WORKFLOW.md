@@ -33,7 +33,7 @@
 
 后四张整窗图的客户区约 1778×925，所以截图要写 `scripts/snap.sh --route /teach --size 1778x925`；右栏局部图（AU~OSP、NonMetal、User Mask）是裁剪图，偏移含义见 `design/spec/50-teach-nodes.md`。
 
-页面里要进入某个参考状态（选中节点、对话框打开、指针在图上…）用开发预设，不用点：`?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>`、`?pointer=x,y`、`?dialog=login|model|grab|generate|median|config`、`?busy=1`（对话框和遮罩是窗口级的，在任何 `--route` 上都有效）、`?scroll=bottom|<px>`（参考图的树滚动了 108px）、`?tool=gv|ruler`、`?spec=dummy`，定义在 `frontend/src/dev/preset.ts`，只在 `import.meta.env.DEV` 下生效。
+页面里要进入某个参考状态（选中节点、对话框打开、指针在图上…）用开发预设，不用点：`?node=metal|sr|dmg|pad|nonmetal|user-mask|<id>`、`?pointer=x,y`、`?dialog=login|model|grab|generate|median|config`、`?busy=1`（对话框和遮罩是窗口级的，在任何 `--route` 上都有效）、`?scroll=bottom|<px>`（参考图的树滚动了 108px）、`?tool=gv|ruler`（同时放上参考图里的 GV 框 / 量尺线）、`?spec=dummy`，定义在 `frontend/src/dev/preset.ts`，只在 `import.meta.env.DEV` 下生效。
 spec 里的坐标已经是设计坐标（`y_设计 = y_图 − dy`）。量颜色和尺寸时用图中坐标，再换算。
 
 ## 2. 起开发服务器并截图
@@ -51,7 +51,7 @@ URL 参数（开发模式，生产包里没有）：
 | 参数 | 含义 |
 | --- | --- |
 | `freeze` | 模拟后端停止产生数据（图表、时钟、日志不再变），截图可重复；比对时必加 |
-| `tool=gv` / `tool=ruler` | 选中工具栏上的这个工具，显示对应的 ROI / 标尺叠加物（`src/dev/preset.ts`） |
+| `tool=gv` / `tool=ruler` | 选中工具栏上的这个工具，并放上参考图里的 GV 框 / 量尺线（`src/dev/preset.ts`） |
 | `spec=dummy` | TEACH 页切到 Dummy 规格树 |
 
 ## 3. 叠加比对

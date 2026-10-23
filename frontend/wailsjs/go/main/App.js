@@ -22,6 +22,10 @@ export function GetConnector() {
   return window['go']['main']['App']['GetConnector']();
 }
 
+export function GetMedianView(arg1) {
+  return window['go']['main']['App']['GetMedianView'](arg1);
+}
+
 export function GetModels() {
   return window['go']['main']['App']['GetModels']();
 }
@@ -32,6 +36,10 @@ export function GetNodeAnalysis(arg1) {
 
 export function GetTeachSpec() {
   return window['go']['main']['App']['GetTeachSpec']();
+}
+
+export function MeasureGv(arg1, arg2) {
+  return window['go']['main']['App']['MeasureGv'](arg1, arg2);
 }
 
 export function PickFolder(arg1) {
