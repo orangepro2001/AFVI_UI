@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"log"
@@ -60,8 +61,14 @@ func main() {
 		// white flash before the page paints.
 		BackgroundColour: &options.RGBA{R: 27, G: 27, B: 29, A: 255},
 		AssetServer:      &assetserver.Options{Assets: assets},
-		OnStartup:        app.startup,
-		Bind:             []any{app},
+		// The journal opens here and not earlier: `wails generate module` (scripts/bindings.sh) runs
+		// main without a window, and that must not leave a session file in the user's folder.
+		OnStartup: func(ctx context.Context) {
+			app.openJournal()
+			app.startup(ctx)
+		},
+		OnShutdown: app.shutdown,
+		Bind:       []any{app},
 		Windows: &windows.Options{
 			Theme: windows.Dark,
 			// One folder for every build: by default WebView2 uses a folder named after the exe, so

@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"afvi/ui/internal/connector"
 	"afvi/ui/internal/inventory"
+	"afvi/ui/internal/journal"
 )
 
 // newTestApp returns an App whose Hub reads the inventory test data from FM1.
@@ -264,4 +267,121 @@ func TestPickFolderWithoutWindow(t *testing.T) {
 	if _, err := app.PickFolder(""); err == nil {
 		t.Error("PickFolder() without a window returned no error")
 	}
+}
+
+// journaled gives app a journal in a temp folder and returns a function that reads it.
+func journaled(t *testing.T, app *App) func() string {
+	t.Helper()
+	j, err := journal.Open(t.TempDir(), journal.Info{Version: "test"})
+	if err != nil {
+		t.Fatalf("journal.Open: %v", err)
+	}
+	app.journal = j
+	t.Cleanup(func() { j.Close() })
+	return func() string {
+		data, err := os.ReadFile(j.Path())
+		if err != nil {
+			t.Fatalf("read journal: %v", err)
+		}
+		return string(data)
+	}
+}
+
+func TestJournalRecordsWhatGoDoes(t *testing.T) {
+	app := newTestApp(t)
+	read := journaled(t, app)
+
+	if _, err := app.SelectModel("ALPHA-00"); err != nil {
+		t.Fatalf("SelectModel: %v", err)
+	}
+	if _, err := app.SelectModel("nope"); err == nil {
+		t.Fatal("SelectModel(nope) returned no error")
+	}
+	if _, err := app.SaveConnector(connector.SaveInput{Machines: []connector.MachinePath{{ID: "FM2", Path: "/does/not/exist"}}, Active: "FM2"}); err == nil {
+		t.Fatal("SaveConnector accepted a missing folder")
+	}
+	if _, err := app.SaveAlignRois(nil); err == nil {
+		t.Fatal("SaveAlignRois without a user folder returned no error")
+	}
+
+	got := read()
+	for _, want := range []string{
+		`k="model.select" name="ALPHA-00"/>`,
+		`k="model.select.fail" err="`,
+		`k="connector.save.fail" active="FM2" err="`,
+		`k="roi.save.fail" err="`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("journal lacks %s:\n%s", want, got)
+		}
+	}
+}
+
+func TestJournalRecordsTheSavedConnectorAndRois(t *testing.T) {
+	hub := connector.NewHub(connector.NewStore(""))
+	hub.SetRoiDir(t.TempDir())
+	app := newAppWith("test", hub)
+	read := journaled(t, app)
+
+	abs, _ := filepath.Abs("internal/inventory/testdata")
+	if _, err := app.SaveConnector(connector.SaveInput{Machines: []connector.MachinePath{{ID: "FM1", Path: abs}}, Active: "FM1"}); err != nil {
+		t.Fatalf("SaveConnector: %v", err)
+	}
+	if _, err := app.SelectModel("ALPHA-00"); err != nil {
+		t.Fatalf("SelectModel: %v", err)
+	}
+	if _, err := app.SaveAlignRois([]inventory.AlignRoi{{ID: "R1", X: 1, Y: 2, W: 30, H: 40}}); err != nil {
+		t.Fatalf("SaveAlignRois: %v", err)
+	}
+	if _, err := app.ResetAlignRois(); err != nil {
+		t.Fatalf("ResetAlignRois: %v", err)
+	}
+
+	got := read()
+	for _, want := range []string{
+		`k="connector.save" active="FM1" hosts="FM1"/>`,
+		`k="roi.save" model="ALPHA-00" n="1" rois="R1:1,2,30,40"/>`,
+		`k="roi.reset" model="ALPHA-00" n="`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("journal lacks %s:\n%s", want, got)
+		}
+	}
+	// No folder path of the user's machines goes into the journal.
+	if strings.Contains(got, abs) {
+		t.Error("a folder path was written to the journal")
+	}
+}
+
+func TestRecordOpsRelaysTheFrontend(t *testing.T) {
+	app := newTestApp(t)
+	read := journaled(t, app)
+
+	err := app.RecordOps([]journal.Op{
+		{Kind: "nav", Attrs: map[string]string{"page": "teach"}},
+		{Kind: "gv", Attrs: map[string]string{"mean": "31.03"}},
+	})
+	if err != nil {
+		t.Fatalf("RecordOps: %v", err)
+	}
+	got := read()
+	if !strings.Contains(got, `k="nav" page="teach"/>`) || !strings.Contains(got, `k="gv" mean="31.03"/>`) {
+		t.Errorf("journal:\n%s", got)
+	}
+}
+
+func TestNewAppLeavesTheUsersFolderAlone(t *testing.T) {
+	// Tests build Apps through NewApp: it must not open the journal, which lives in the user's folder.
+	if app := NewApp("test"); app.journal != nil {
+		t.Error("NewApp opened a journal; only main may (openJournal)")
+	}
+}
+
+func TestWithoutAJournalNothingIsRecorded(t *testing.T) {
+	app := newTestApp(t)
+	if err := app.RecordOps([]journal.Op{{Kind: "nav"}}); err != nil {
+		t.Errorf("RecordOps without a journal: %v", err)
+	}
+	app.startup(context.Background())
+	app.shutdown(context.Background())
 }

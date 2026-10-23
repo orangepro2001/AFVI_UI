@@ -6,9 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"afvi/ui/internal/inventory"
 )
+
+// recheckEvery is how long an open inventory.Service is trusted before the host's folder is checked
+// again (a folder that went away is noticed then, or when the user applies the Connector).
+const recheckEvery = 30 * time.Second
 
 // ErrNotConfigured is returned by Inventory when no host has a folder yet.
 var ErrNotConfigured = errors.New("connector: no host is configured")
@@ -22,13 +27,18 @@ type Hub struct {
 	loaded bool
 	svc    *inventory.Service
 	svcKey string
+	// checkedAt is when the host's folder last passed Check for the open service; recheck is how
+	// long that stands. The calls of the application, a drag's measurements among them, all pass
+	// through Inventory and must not each ask the share three questions.
+	checkedAt time.Time
+	recheck   time.Duration
 	// roiDir is where the user's own ROI files go, one folder per host ("" = saving is refused).
 	roiDir string
 }
 
 // NewHub returns a Hub that reads and writes store.
 func NewHub(store *Store) *Hub {
-	return &Hub{store: store}
+	return &Hub{store: store, recheck: recheckEvery}
 }
 
 // SetRoiDir sets the folder for the user's own ROI files; each host gets a folder inside it. The
@@ -145,6 +155,9 @@ func (h *Hub) Save(in SaveInput) (Config, error) {
 	if next.Active != h.data.Active || !samePaths(next.Paths, h.data.Paths) {
 		h.svc = nil
 		h.svcKey = ""
+	} else if h.svc != nil {
+		// Applying the same folders again is how the user asks for the pictures to be read anew.
+		h.svc.ReloadPictures()
 	}
 	h.data = next
 	return h.configLocked(), nil
@@ -176,11 +189,14 @@ func (h *Hub) Inventory() (*inventory.Service, error) {
 		return nil, ErrNotConfigured
 	}
 	path := h.data.Paths[active]
+	key := active + "\x00" + path
+	if h.svc != nil && h.svcKey == key && time.Since(h.checkedAt) < h.recheck {
+		return h.svc, nil
+	}
 	if check := Check(path); !check.OK {
 		return nil, fmt.Errorf("%s: %s", active, check.Message)
 	}
-
-	key := active + "\x00" + path
+	h.checkedAt = time.Now()
 	if h.svc != nil && h.svcKey == key {
 		return h.svc, nil
 	}
@@ -188,6 +204,9 @@ func (h *Hub) Inventory() (*inventory.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", active, err)
 	}
+	// The repository is a folder of the host, whatever form the host's path has (a bare \\host root
+	// included): it is not found by looking next to PxInventory.
+	svc.SetRepoDir(filepath.Join(path, "PxRepository"))
 	if h.roiDir != "" {
 		if err := svc.SetUserDir(filepath.Join(h.roiDir, active)); err != nil {
 			return nil, fmt.Errorf("%s: %w", active, err)

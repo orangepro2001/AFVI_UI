@@ -1,12 +1,15 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { apiKey, createApi } from '@/api'
+import { startOperationJournal } from '@/journal/start'
 import { router } from '@/router'
 import App from './App.vue'
 import './styles/generated.css'
 
-const app = createApp(App).provide(apiKey, createApi()).use(createPinia()).use(router)
+const api = createApi()
+const app = createApp(App).provide(apiKey, api).use(createPinia()).use(router)
 app.mount('#app')
+startOperationJournal(app, api, router)
 
 // Design overlay (?design=...) and presets (?tool=...): development only, absent from production builds.
 if (import.meta.env.DEV) {

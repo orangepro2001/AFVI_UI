@@ -247,4 +247,42 @@ describe('workbench store: the Median picture', () => {
     await flushPromises()
     expect(getMedianView).toHaveBeenCalledTimes(3)
   })
+
+  it('asks the backend once for each light, however often the bulbs are switched', async () => {
+    const getMedianView = vi.fn(async (light: number) => medianView(light))
+    const store = withMedian(getMedianView)
+    await store.load()
+
+    for (const light of [3, 2, 3, 1, 2, 1, 3] as const) {
+      store.light = light
+      await flushPromises()
+      expect(store.median?.light).toBe(light)
+    }
+    expect(getMedianView.mock.calls.map(([light]) => light)).toEqual([2, 3, 1])
+  })
+
+  it('asks again for what failed, and for everything once another model is loaded', async () => {
+    const getMedianView = vi
+      .fn<ApiClient['getMedianView']>()
+      .mockRejectedValueOnce(new Error('share not reachable'))
+      .mockImplementation(async (light) => medianView(light))
+    const store = withMedian(getMedianView)
+    await store.load()
+    expect(store.median).toBeNull()
+
+    store.light = 3
+    await flushPromises()
+    store.light = 2
+    await flushPromises()
+    // Light-2 failed the first time: it is asked for again, then kept.
+    expect(getMedianView.mock.calls.map(([light]) => light)).toEqual([2, 3, 2])
+
+    const { useAppStore } = await import('./app')
+    useAppStore().inventoryEpoch++
+    await flushPromises()
+    expect(getMedianView).toHaveBeenCalledTimes(4)
+    store.light = 3
+    await flushPromises()
+    expect(getMedianView).toHaveBeenCalledTimes(5)
+  })
 })

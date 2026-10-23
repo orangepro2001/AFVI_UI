@@ -25,6 +25,7 @@ import {
   GetTeachSpec,
   MeasureGv,
   PickFolder,
+  RecordOps,
   ResetAlignRois,
   SaveAlignRois,
   SaveConnector,
@@ -42,7 +43,7 @@ type TeachSpec = Pick<TeachSnapshot, 'unit' | 'dummy'>
 /**
  * The methods the Go side implements today: getAppInfo, toggleFullscreen, the inventory calls
  * (getModels, getActiveModel, selectModel, getTeach, getNodeAnalysis, getAlignView, saveAlignRois,
- * resetAlignRois, getMedianView, measureGv) and the four Connector calls
+ * resetAlignRois, getMedianView, measureGv), recordOps (the operation journal) and the four Connector calls
  * (getConnector, checkMachinePath, saveConnector, pickFolder). Everything else stays with the mock
  * until Go has it (createApi merges the two), so this list is the honest state of the backend.
  *
@@ -84,6 +85,7 @@ export function createWailsApi(base: ApiClient): Partial<ApiClient> {
         ) as unknown as Promise<ConnectorConfig>,
       pickFolder: (startDir) => PickFolder(startDir) as unknown as Promise<string>,
     }),
+    recordOps: (ops) => RecordOps(ops as Parameters<typeof RecordOps>[0]),
     // Window control is the Wails runtime, not a Go method of ours.
     toggleFullscreen: async () => {
       if (await WindowIsFullscreen()) WindowUnfullscreen()

@@ -512,6 +512,27 @@ export namespace inventory {
 
 }
 
+export namespace journal {
+	
+	export class Op {
+	    at: number;
+	    k: string;
+	    a: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Op(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.at = source["at"];
+	        this.k = source["k"];
+	        this.a = source["a"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
 	export class AppInfo {

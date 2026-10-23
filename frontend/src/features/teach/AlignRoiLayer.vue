@@ -236,16 +236,20 @@ function labelY(rect: Rect) {
       </template>
     </svg>
 
-    <p
+    <div
       v-if="view.state === 'missing' || view.state === 'unreadable'"
-      class="pointer-events-none absolute inset-x-0 top-[45%] text-center text-xs text-sheet-muted"
+      class="pointer-events-none absolute inset-x-0 top-[45%] px-4 text-center text-xs text-sheet-muted"
     >
-      {{
-        view.state === 'missing'
-          ? 'No Metal / SR picture found'
-          : 'Metal / SR picture could not be read'
-      }}
-    </p>
+      <p>
+        {{
+          view.state === 'missing'
+            ? 'No Metal / SR picture found'
+            : 'Metal / SR picture could not be read'
+        }}
+      </p>
+      <!-- Where it was looked for, or why it failed: the folder names let the user check the share. -->
+      <p v-if="view.note" class="text-2xs mt-1 break-all" data-picture-note>{{ view.note }}</p>
+    </div>
     <p
       v-else-if="view.state === 'partial'"
       class="pointer-events-none absolute bottom-1 left-2 text-xs text-sheet-muted"

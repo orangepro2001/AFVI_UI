@@ -14,8 +14,10 @@ import (
 	"strings"
 )
 
-// maxMedianCache is how many decoded Median pictures stay in memory (one per light; 24 MB each).
-const maxMedianCache = 3
+// maxMedianBytes is how much memory the decoded Median pictures may take (24 MB each, so ten of
+// the reference's size). The least recently used go first; the one just asked for always stays.
+// A variable so that a test can make it small.
+var maxMedianBytes = 256 << 20
 
 // medianFileName matches Median_<a>_<b>_<c>.tif; c is the light index (0 is Light-1).
 var medianFileName = regexp.MustCompile(`(?i)^median_(\d+)_(\d+)_(\d+)\.tiff?$`)
@@ -72,10 +74,12 @@ type GvStats struct {
 // medianEntry is a decoded Median picture and the preview that was made of it.
 type medianEntry struct {
 	path string
-	mod  int64
 	gray *grayLayer
 	url  string
 }
+
+// size is the memory the decoded picture takes.
+func (e *medianEntry) size() int { return len(e.gray.pix) }
 
 // medianFile is one Median_<a>_<b>_<c>.tif.
 type medianFile struct {
@@ -85,13 +89,16 @@ type medianFile struct {
 
 // findMedianFiles returns the Median pictures below dirs, by light index. They sit in a folder
 // called MEDIAN (.../Line/Top/Layer/MEDIAN); when several such folders exist the one under the
-// model's own surface ("Top"), then the shallowest, then the first by name wins. Of the files of
-// one light the lowest <a>_<b> is taken.
-func findMedianFiles(dirs []string, surface string) map[int]medianFile {
+// model's own surface ("Top"), then the one under the first of the preferred resolutions (the
+// machine's, the model's: a model taught at 2.0 and 3.5 has a MEDIAN folder under each), then the
+// shallowest, then the first by name wins. Of the files of one light the lowest <a>_<b> is taken.
+func findMedianFiles(dirs []string, surface string, resolutions ...string) map[int]medianFile {
 	type folder struct {
 		path  string
 		depth int
 		match bool
+		// rank is the index of the preferred resolution found in the path; len(resolutions) if none.
+		rank  int
 		files []medianFile
 	}
 	var folders []*folder
@@ -114,10 +121,15 @@ func findMedianFiles(dirs []string, surface string) map[int]medianFile {
 			if !strings.EqualFold(d.Name(), "MEDIAN") {
 				return nil
 			}
-			f := &folder{path: path, depth: depth}
+			f := &folder{path: path, depth: depth, rank: len(resolutions)}
 			for _, part := range strings.Split(rel, string(filepath.Separator)) {
 				if surface != "" && strings.EqualFold(part, surface) {
 					f.match = true
+				}
+				for i, res := range resolutions {
+					if res != "" && i < f.rank && strings.EqualFold(part, res) {
+						f.rank = i
+					}
 				}
 			}
 			entries, _ := os.ReadDir(path)
@@ -144,6 +156,9 @@ func findMedianFiles(dirs []string, surface string) map[int]medianFile {
 		x, y := folders[i], folders[j]
 		if x.match != y.match {
 			return x.match
+		}
+		if x.rank != y.rank {
+			return x.rank < y.rank
 		}
 		if x.depth != y.depth {
 			return x.depth < y.depth
@@ -184,14 +199,15 @@ func previewGray(g *grayLayer) *image.Gray {
 	return out
 }
 
-// medianPicture decodes the Median TIFF at path (or takes it from the cache) and makes its preview.
+// medianPicture returns the Median TIFF at path decoded, with its preview. The file is read from
+// the repository the first time only: later calls, the measurements of a drag among them, are
+// answered from memory without touching the share (not even to look at the file's date).
 func (s *Service) medianPicture(path string) (*medianEntry, error) {
 	s.medianMu.Lock()
 	defer s.medianMu.Unlock()
 
-	mod := modTime(path)
 	for i, e := range s.medianCache {
-		if e.path == path && e.mod == mod {
+		if e.path == path {
 			// Most recently used last.
 			s.medianCache = append(append(s.medianCache[:i:i], s.medianCache[i+1:]...), e)
 			return e, nil
@@ -206,31 +222,102 @@ func (s *Service) medianPicture(path string) (*medianEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry := &medianEntry{path: path, mod: mod, gray: gray, url: url}
+	entry := &medianEntry{path: path, gray: gray, url: url}
 
-	kept := s.medianCache[:0:0]
+	s.medianCache = append(s.medianCache, entry)
+	total := 0
 	for _, e := range s.medianCache {
-		if e.path != path {
-			kept = append(kept, e)
-		}
+		total += e.size()
 	}
-	kept = append(kept, entry)
-	if len(kept) > maxMedianCache {
-		kept = kept[len(kept)-maxMedianCache:]
+	for len(s.medianCache) > 1 && total > maxMedianBytes {
+		total -= s.medianCache[0].size()
+		s.medianCache = s.medianCache[1:]
 	}
-	s.medianCache = kept
 	return entry, nil
 }
 
-// medianFileOf finds the Median TIFF of the active model for light (1-based).
-func (s *Service) medianFileOf(light int) (medianFile, []int, bool, error) {
-	am, err := s.Active()
+// pictureModel is the active model, the Surface of the host and the resolutions to prefer: the
+// things that say which pictures to look for. All are asked of the disk once per session (the
+// active model changes through Select, which sets it here at once).
+func (s *Service) pictureModel() (model, surface string, resolutions []string, err error) {
+	s.mu.Lock()
+	model, surface, resolutions = s.active, s.surface, s.resolutions
+	s.mu.Unlock()
+	if model == "" {
+		am, err := s.Active()
+		if err != nil {
+			return "", "", nil, err
+		}
+		model = am.Name
+	}
+	if surface == "" {
+		surface = s.surfaceName()
+		_, machine := s.applicationInfo()
+		resolutions = []string{machine, s.modelResolution(model, machine)}
+		s.mu.Lock()
+		s.surface, s.resolutions = surface, resolutions
+		s.mu.Unlock()
+	}
+	return model, surface, resolutions, nil
+}
+
+// medianLookup is what looking for the Median pictures of a model found, kept for the session.
+type medianLookup struct {
+	files map[int]medianFile
+	// searched says where the search went, for the note of a view that has no picture.
+	searched string
+}
+
+// searchedNote says where the pictures of model were looked for: the folders of the model's own
+// that exist, or the repository where there is none.
+func (s *Service) searchedNote(model string, dirs []string) string {
+	if len(dirs) == 0 {
+		return fmt.Sprintf("there is no folder for model %s in %s", model, s.repoDir())
+	}
+	return "looked below " + strings.Join(dirs, ", ")
+}
+
+// medianFileOf finds the Median TIFF of the active model for light (1-based). Which files the model
+// has, and where they were looked for, is looked up in the repository once per session.
+func (s *Service) medianFileOf(light int) (file medianFile, lookup *medianLookup, found bool, err error) {
+	model, surface, resolutions, err := s.pictureModel()
 	if err != nil {
 		return medianFile{}, nil, false, err
 	}
-	files := findMedianFiles(s.modelRepoDirs(am.Name), am.Surface)
-	file, ok := files[light-1]
-	return file, sortedLights(files), ok, nil
+	s.mu.Lock()
+	lookup = s.medianFiles[model]
+	s.mu.Unlock()
+	if lookup == nil {
+		dirs := s.modelRepoDirs(model)
+		lookup = &medianLookup{
+			files:    findMedianFiles(dirs, surface, resolutions...),
+			searched: s.searchedNote(model, dirs),
+		}
+		s.mu.Lock()
+		if s.medianFiles == nil {
+			s.medianFiles = map[string]*medianLookup{}
+		}
+		s.medianFiles[model] = lookup
+		s.mu.Unlock()
+	}
+	file, found = lookup.files[light-1]
+	return file, lookup, found, nil
+}
+
+// ReloadPictures forgets every picture and every picture lookup, so that the next request reads
+// the repository again. Nothing else does: a picture that was replaced on the share shows up
+// after this (the Connector dialog's Apply calls it) or after a restart.
+func (s *Service) ReloadPictures() {
+	s.medianMu.Lock()
+	s.medianCache = nil
+	s.medianMu.Unlock()
+	s.mu.Lock()
+	s.pictures = nil
+	s.pictureList = nil
+	s.medianFiles = nil
+	s.surface = ""
+	s.resolutions = nil
+	s.mu.Unlock()
 }
 
 // MedianView returns the Median picture of the active model for light (1 is Light-1): a preview
@@ -239,14 +326,14 @@ func (s *Service) MedianView(light int) (MedianView, error) {
 	if light < 1 {
 		return MedianView{}, fmt.Errorf("inventory: light %d does not exist", light)
 	}
-	file, lights, ok, err := s.medianFileOf(light)
+	file, lookup, ok, err := s.medianFileOf(light)
 	if err != nil {
 		return MedianView{}, err
 	}
-	view := MedianView{Light: light, Lights: lights}
+	view := MedianView{Light: light, Lights: sortedLights(lookup.files)}
 	if !ok {
 		view.State = StateMissing
-		view.Note = fmt.Sprintf("no Median picture of Light-%d", light)
+		view.Note = fmt.Sprintf("no Median picture of Light-%d: %s", light, lookup.searched)
 		return view, nil
 	}
 	view.File = filepath.Base(file.path)

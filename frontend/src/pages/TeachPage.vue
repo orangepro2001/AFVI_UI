@@ -31,10 +31,12 @@ onBeforeUnmount(() => {
 /** The Metal node shows the composed picture with editable ROI boxes; SR and DMG stay static. */
 const roiEditing = computed(() => mode.value === 'align' && teach.selectedNode?.align === 'metal')
 
+// Loads the picture when the Metal node is picked, and again when it was dropped under an open
+// Metal node (another model or host was chosen: the list is read anew from the backend).
 watch(
-  roiEditing,
-  (editing) => {
-    if (editing) void alignRoi.ensureLoaded().catch(() => undefined)
+  () => [roiEditing.value, alignRoi.view] as const,
+  ([editing, view]) => {
+    if (editing && !view) void alignRoi.ensureLoaded().catch(() => undefined)
   },
   { immediate: true },
 )

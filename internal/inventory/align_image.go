@@ -57,20 +57,58 @@ type layerFiles struct {
 	metal, sr string
 }
 
+// maxAlignPictures is how many models' composed Align pictures stay in memory.
+const maxAlignPictures = 4
+
 // composed is the picture sent to the viewer.
 type composed struct {
 	url        string
 	srcW, srcH int
 	state      string
 	// note says why a layer could not be read; empty when everything was.
-	note            string
-	metal, sr       string
-	metalMod, srMod int64
+	note string
 }
 
-// repoDir is the PxRepository folder that sits next to PxInventory.
+// repoDir is the PxRepository folder.
 func (s *Service) repoDir() string {
-	return filepath.Join(filepath.Dir(s.root), "PxRepository")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.repo
+}
+
+// RepoDir is the PxRepository folder the pictures are read from.
+func (s *Service) RepoDir() string { return s.repoDir() }
+
+// SetRepoDir tells the Service where PxRepository is. The Connector knows: it is the folder of the
+// host (or, for a bare \\host root, the share \\host\PxRepository), which is not always the
+// folder next to PxInventory that Open guesses.
+func (s *Service) SetRepoDir(dir string) {
+	s.mu.Lock()
+	s.repo = dir
+	s.mu.Unlock()
+}
+
+// siblingDir is the folder called name next to the folder dir. On Windows a UNC share is a volume
+// and filepath.Dir of \\host\PxInventory is that volume itself, so the sibling share
+// \\host\PxRepository has to be built from the volume name.
+func siblingDir(dir, name string) string {
+	if sibling, ok := uncShareSibling(dir, filepath.VolumeName(dir), name); ok {
+		return sibling
+	}
+	return filepath.Join(filepath.Dir(dir), name)
+}
+
+// uncShareSibling is the share called name on the host of dir when dir is exactly a UNC share
+// (\\host\share, vol being its volume name); otherwise ok is false.
+func uncShareSibling(dir, vol, name string) (string, bool) {
+	if len(vol) <= 2 || strings.TrimRight(dir, `\/`) != vol {
+		return "", false
+	}
+	i := strings.LastIndexAny(vol, `\/`)
+	if i < 2 {
+		return "", false
+	}
+	return vol[:i+1] + name, true
 }
 
 // modelRepoDirs returns the folders of PxRepository that belong to model: the folder named like
@@ -149,14 +187,15 @@ type grayLayer struct {
 	w, h   int
 }
 
-// readGray decodes a TIFF into an 8-bit gray layer.
+// readGray decodes a TIFF into an 8-bit gray layer. The file is read in one go and decoded from
+// memory: a network share answers one long sequential read far better than the many small reads
+// of a decoder that seeks through the file.
 func readGray(path string) (*grayLayer, error) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	img, err := tiff.Decode(f)
+	img, err := tiff.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -232,32 +271,19 @@ func pngDataURL(img image.Image) (string, error) {
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
-// modTime returns the modification time of path, 0 when it cannot be read.
-func modTime(path string) int64 {
-	if path == "" {
-		return 0
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return 0
-	}
-	return info.ModTime().UnixNano()
-}
-
-// alignPicture composes the picture of model, reusing the last one while its files are unchanged.
-// Nothing under PxRepository is ever written.
+// alignPicture composes the picture of model once per session (ReloadPictures forgets it). Nothing
+// under PxRepository is ever written.
 func (s *Service) alignPicture(model string) (composed, error) {
-	files := findLayers(s.modelRepoDirs(model))
-
 	s.mu.Lock()
-	cached := s.picture
+	cached := s.pictures[model]
 	s.mu.Unlock()
-	if cached != nil && cached.metal == files.metal && cached.sr == files.sr &&
-		cached.metalMod == modTime(files.metal) && cached.srMod == modTime(files.sr) {
+	if cached != nil {
 		return *cached, nil
 	}
 
-	pic := composed{metal: files.metal, sr: files.sr, metalMod: modTime(files.metal), srMod: modTime(files.sr)}
+	dirs := s.modelRepoDirs(model)
+	files := findLayers(dirs)
+	pic := composed{}
 	var metal, sr *grayLayer
 	var errs []error
 	for _, layer := range []struct {
@@ -310,9 +336,21 @@ func (s *Service) alignPicture(model string) (composed, error) {
 
 	if err := errors.Join(errs...); err != nil {
 		pic.note = err.Error()
+	} else if pic.state == StateMissing {
+		pic.note = "no Metal.tif or SR.tif: " + s.searchedNote(model, dirs)
 	}
 	s.mu.Lock()
-	s.picture = &pic
+	if s.pictures == nil {
+		s.pictures = map[string]*composed{}
+	}
+	if _, seen := s.pictures[model]; !seen {
+		s.pictureList = append(s.pictureList, model)
+		for len(s.pictureList) > maxAlignPictures {
+			delete(s.pictures, s.pictureList[0])
+			s.pictureList = s.pictureList[1:]
+		}
+	}
+	s.pictures[model] = &pic
 	s.mu.Unlock()
 	return pic, nil
 }

@@ -51,6 +51,20 @@ describe('AlignRoiLayer', () => {
     expect(wrapper!.findAll('rect[data-roi]')).toHaveLength(6)
   })
 
+  it('says where it looked when there is no picture', async () => {
+    const { store } = await mountLayer()
+    expect(wrapper!.find('[data-picture-note]').exists()).toBe(false)
+
+    store.view = {
+      ...store.view!,
+      state: 'missing',
+      note: 'no Metal.tif or SR.tif: looked below D:\\PxRepository\\7M99-535',
+    }
+    await flushPromises()
+    expect(wrapper!.text()).toContain('No Metal / SR picture found')
+    expect(wrapper!.find('[data-picture-note]').text()).toContain('looked below D:\\PxRepository')
+  })
+
   it('selects a box by a click and shows eight grips', async () => {
     const { store } = await mountLayer()
     await wrapper!.find('rect[data-roi="P4"]').trigger('pointerdown', { button: 0 })

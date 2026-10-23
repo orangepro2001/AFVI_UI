@@ -1,5 +1,6 @@
 // Package appdata is the one folder where AFVI UI keeps everything it saves for the user: the
-// Connector configuration and the WebView2 browser data. It is os.UserConfigDir()/AFVI-UI, which on
+// Connector configuration, the WebView2 browser data, the user's own ROI lists and the journal of
+// what was done in each run (journal\, one XML file per session, see internal/journal). It is os.UserConfigDir()/AFVI-UI, which on
 // Windows is %AppData%\AFVI-UI, a folder Explorer hides together with AppData.
 //
 // The folder is the same for every build and version. WebView2 would otherwise keep its data in a

@@ -130,3 +130,10 @@ func (h *Hub) Inventory() (*inventory.Service, error) // 当前主机的 Service
 - 切换主机后当前 model 回到那台主机的默认 model（Application.xml 的 `Model`），用户之前在另一台里选的 model 不记。
 - 保存的路径指向 Windows 盘符时只能在 Windows 上用；在 WSL 里开发用 Linux 路径（`/home/.../design/repo/FM1`，`scripts/devapi.go` 会自动配好）。
 - 配置文件不加密、不同步；多个应用实例同时写同一个文件时后写的覆盖先写的。
+
+## 重新选择设备（Apply）与重新加载
+
+- 点 Apply 一定重新读：主机或文件夹变了，后端重建 `inventory.Service`；没变（用户“重新选择”同一台再 Apply），后端保留服务和它的当前模型，但调用 `ReloadPictures` 丢掉所有图片缓存与查找结果（见 90-inventory.md 的会话缓存）。前端随后 `app.reloadInventory()`（`inventoryEpoch++`）：当前模型、TEACH 的规格树与分析表、Metal 的合成图与 ROI、中间的 Median 图、GV 框和量尺都重新来过。
+- 已打开 Metal 节点时，Align 的图与 ROI 被丢掉后会自己重新读（`TeachPage` 监视 `alignRoi.view`），不需要先点别的节点再点回来。
+- 为了不在每次调用（拖框时每秒几十次）都问一遍共享盘，`Hub.Inventory` 对已打开的服务 30 秒内不再复查主机文件夹（`recheckEvery`）；文件夹中途不见了，最迟 30 秒后或下一次 Apply 时报错。
+

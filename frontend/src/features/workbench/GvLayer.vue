@@ -48,7 +48,8 @@ const notice = computed(() => {
   if (store.canMeasure) return null
   const view = workbench.median
   if (view?.state === 'unreadable') return view.note || 'The Median picture could not be read'
-  return `No Median picture of Light-${workbench.light}`
+  // The note says where the picture was looked for.
+  return view?.note || `No Median picture of Light-${workbench.light}`
 })
 
 function picturePoint(event: PointerEvent): Point {
@@ -235,7 +236,8 @@ const handleCursor: Record<Handle, string> = {
 
     <p
       v-if="notice"
-      class="pointer-events-none absolute inset-x-0 top-[45%] text-center text-xs text-sheet-muted"
+      class="pointer-events-none absolute inset-x-0 top-[45%] px-4 text-center text-xs break-all text-sheet-muted"
+      data-picture-note
     >
       {{ notice }}
     </p>

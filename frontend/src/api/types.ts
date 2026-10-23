@@ -325,6 +325,18 @@ export interface TeachSnapshot {
   alignImages: Record<AlignKind, ImageRef>
 }
 
+// --- Operation journal ------------------------------------------------------------------------
+
+/**
+ * One thing the user did, as the journal of the session writes it (internal/journal): `k` is the
+ * kind ("gv", "nav", ...), `a` the details as short strings, `at` when it happened (Unix ms).
+ */
+export interface OperationRecord {
+  at: number
+  k: string
+  a: Record<string, string>
+}
+
 // --- Session ---------------------------------------------------------------------------------
 
 export interface UserAccount {

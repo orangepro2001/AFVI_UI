@@ -278,6 +278,17 @@ describe('GvLayer', () => {
     expect(wrapper!.text()).toContain('No Median picture of Light-2')
   })
 
+  it('says where the Median picture was looked for', async () => {
+    await mountLayer(
+      median({
+        state: 'missing',
+        image: { url: '', width: 0, height: 0 },
+        note: 'no Median picture of Light-2: looked below D:\\PxRepository\\7M99-535',
+      }),
+    )
+    expect(wrapper!.find('[data-picture-note]').text()).toContain('looked below D:\\PxRepository')
+  })
+
   it('shows a failed measurement', async () => {
     const { svg } = await mountLayer(median(), {
       measureGv: async () => {

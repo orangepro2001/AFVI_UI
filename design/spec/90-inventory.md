@@ -57,11 +57,14 @@ TEACH 右半部分（Specification 树、Align 行、Image Analysis 三张表）
 
 工作台中间的图是当前模型、当前灯的 Median 图（见 [20-workbench.md](20-workbench.md) 第 7 节）。`internal/inventory/median.go`：
 
-- 位置：`PxRepository/<模型>/` 下（模型名或去掉修订号的基名，不分大小写）名为 `MEDIAN` 的目录（`2.0/Line/Top/Layer/MEDIAN`），最深 8 层；有多个时先选路径里带本模型 Surface（`Top` / `Bottom`）的，再选最浅的，再按名字。
+- **PxRepository 在哪**：Connector 把主机的文件夹直接交给后端（`Hub.Inventory` 里 `SetRepoDir(<主机文件夹>/PxRepository)`），不再从 `PxInventory` 的位置去推。以前用 `filepath.Dir(<PxInventory>)` 推，主机存成 `\\192.168.1.61` 这种 UNC 服务器根时就错了：Windows 上 `\\host\PxInventory` 本身是一个“卷”，`Dir` 返回它自己，推出来的是不存在的 `\\host\PxInventory\PxRepository`，于是所有图（Metal / SR / Median）和仓库里的分辨率都找不到、报 “No Metal / SR picture found”。`Open` 里仍有个猜测（`siblingDir`，对 UNC 共享用卷名换最后一段），只给直接用 `Open` 的测试和工具用。Windows 上的真实行为由 `repodir_windows_test.go` 在 CI 的 Windows 机器上验证。
+- 位置：`PxRepository/<模型>/` 下（模型名或去掉修订号的基名，不分大小写）名为 `MEDIAN` 的目录（`2.0/Line/Top/Layer/MEDIAN`），最深 8 层；有多个时先选路径里带本模型 Surface（`Top` / `Bottom`）的，再选路径里带**机台分辨率**（`Application.xml` 的 `Resolution`，其次是模型自己的分辨率）的——一个模型常有 `2.0` 和 `3.5` 两个目录，各有一份 MEDIAN——再选最浅的，再按名字。
 - 文件：`Median_<a>_<b>_<c>.tif(f)`（不分大小写），`c` 是灯号 − 1。同一个灯有多个文件时取 `<a>` 最小、再 `<b>` 最小的。其他文件（`Thumbs.db` 等）忽略。参考数据（`FM1`/`FM2`/`BM` 相同）是 `Median_0_1_0..2.tif`：5860×4020、8 位灰度、未压缩。
+- 找不到图时 `note` 说明找过哪里：模型在 `PxRepository` 里没有文件夹（写出仓库路径），或文件夹有但里面没有图（写出找过的文件夹）。界面把它显示在 “No Metal / SR picture found” / “No Median picture of Light-n” 下面，可以直接对照共享盘。
 - `GetMedianView(light)`：`state` 为 `ok` 时带预览（每个预览像素 = 4×4 个 TIFF 像素的均值，PNG data URL，显示 781×536）、`size`（TIFF 尺寸）、`file`、`lights`（本模型有哪几个灯）；`missing`（没有这个灯的图）、`unreadable`（TIFF 解不开，`note` 说原因）时没有图，调用本身不报错。
 - `MeasureGv(light, box)`：`box` 是 TIFF 像素的矩形（可带小数）；统计 `box` 向外取整并夹进图里（至少一个像素）的灰度：`pixels`、`mean`、`std`（总体）、`min`、`max`、`saturatedHigh`（=255）、`saturatedLow`（=0），以及实际量的 `box`。算法与 AFVI_TEACH 的 `core.MeasureGv` 相同。没有图时返回错误。
-- 解码结果按（路径 + 修改时间）缓存，最近 3 张；文件被替换后下一次请求重新读。永不写仓库。
+- **会话缓存（不再访问网络）**：仓库多半在 `\\host` 共享上，所以图片与它们的查找都只做一次。TIFF 用 `os.ReadFile` 一次读入再解码（不是边 seek 边读）；解码结果按路径缓存，总量 256 MB，超了丢最久没用的，刚请求的那张一定留下；命中时不 `stat`、不看修改时间。哪个模型有哪几个灯的文件（遍历 MEDIAN 目录）按模型记住；当前模型名与 Surface 也只问一次盘（`Select` 直接改内存里的当前模型）。Align 的 Metal / SR 合成图同理，按模型留最近 4 张。因此一个热会话里 `GetMedianView`、`MeasureGv`、保存 ROI 都零磁盘访问（`TestMedianNeedsNoDiskOnceLoaded` 把整个仓库和 `PxInventory` 删掉后还能继续量）。
+- 唯一的刷新入口是 `Service.ReloadPictures()`：清掉解码缓存、文件查找、合成图和 Surface。`connector.Hub.Save` 在文件夹与主机都没变时（用户在 Connector 对话框里再点 Apply）调用它；变了就整个 `Service` 重建。共享上的图被替换后，Apply 一次或重启才会看到。永不写仓库。
 - 参考数据（Light-1）整图：均值 31.03、标准差 20.39、范围 12..168（与 Pillow 独立量得的一致，见 `TestRealMedianPicture`）；Light-2 均值 18.10、范围 9..29（很暗，是真实数据）；Light-3 均值 52.37。
 
 ## 数据位置

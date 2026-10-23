@@ -1,12 +1,19 @@
 package connector
 
 import (
+	"bytes"
 	"errors"
+	"image"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/image/tiff"
+
+	"afvi/ui/internal/inventory"
 )
 
 // fm1Folder returns the absolute path of the inventory testdata folder as a host folder.
@@ -234,6 +241,109 @@ func TestHubKeepService(t *testing.T) {
 	}
 	if am.Name != "ALPHA-00" {
 		t.Fatalf("active model = %q want ALPHA-00", am.Name)
+	}
+}
+
+func TestHubApplyingTheSameFoldersReloadsThePictures(t *testing.T) {
+	dir := t.TempDir()
+	mkdir(t, filepath.Join(dir, "PxInventory", "INSPECT_SPEC", "M1-00"))
+	medianDir := filepath.Join(dir, "PxRepository", "m1", "Layer", "MEDIAN")
+	writeTiff := func(value uint8) {
+		img := image.NewGray(image.Rect(0, 0, 16, 16))
+		for i := range img.Pix {
+			img.Pix[i] = value
+		}
+		var buf bytes.Buffer
+		if err := tiff.Encode(&buf, img, nil); err != nil {
+			t.Fatal(err)
+		}
+		mkdir(t, medianDir)
+		if err := os.WriteFile(filepath.Join(medianDir, "Median_0_1_0.tif"), buf.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeTiff(40)
+
+	hub := NewHub(NewStore(filepath.Join(t.TempDir(), "connector.json")))
+	input := SaveInput{Machines: []MachinePath{{ID: "FM1", Path: dir}}, Active: "FM1"}
+	if _, err := hub.Save(input); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	svc, err := hub.Inventory()
+	if err != nil {
+		t.Fatalf("Inventory: %v", err)
+	}
+	mean := func() float64 {
+		stats, err := svc.MeasureGv(1, inventory.GvBox{W: 16, H: 16})
+		if err != nil {
+			t.Fatalf("MeasureGv: %v", err)
+		}
+		return stats.Mean
+	}
+	if mean() != 40 {
+		t.Fatal("first read")
+	}
+
+	// The picture is replaced on the share: a session that has it in memory does not see that ...
+	writeTiff(90)
+	if mean() != 40 {
+		t.Fatal("the picture was read again without being asked to")
+	}
+	// ... until the folders are applied again, which keeps the service and its active model.
+	if _, err := hub.Save(input); err != nil {
+		t.Fatalf("Save again: %v", err)
+	}
+	if again, _ := hub.Inventory(); again != svc {
+		t.Fatal("service replaced by an unchanged Save")
+	}
+	if mean() != 90 {
+		t.Fatal("the picture was not read again after Apply")
+	}
+}
+
+func TestHubHandsTheRepositoryFolderOfTheHostToTheService(t *testing.T) {
+	// Whatever the form of the host's path, its PxRepository is the folder of that name inside it;
+	// on Windows a bare \\host root has no folder next to PxInventory to guess it from.
+	hub := NewHub(NewStore(filepath.Join(t.TempDir(), "connector.json")))
+	fm1 := fm1Folder(t)
+	if _, err := hub.Save(SaveInput{Machines: []MachinePath{{ID: "FM1", Path: fm1}}, Active: "FM1"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	svc, err := hub.Inventory()
+	if err != nil {
+		t.Fatalf("Inventory: %v", err)
+	}
+	if got, want := svc.RepoDir(), filepath.Join(fm1, "PxRepository"); got != want {
+		t.Errorf("RepoDir = %q, want %q", got, want)
+	}
+}
+
+func TestHubDoesNotAskTheShareOnEveryCall(t *testing.T) {
+	hub := NewHub(NewStore(filepath.Join(t.TempDir(), "connector.json")))
+	host := fm2Folder(t)
+	if _, err := hub.Save(SaveInput{Machines: []MachinePath{{ID: "FM1", Path: host}}, Active: "FM1"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	svc, err := hub.Inventory()
+	if err != nil {
+		t.Fatalf("Inventory: %v", err)
+	}
+
+	// The folder goes away: calls inside the trust window do not look, and get the open service.
+	if err := os.RemoveAll(filepath.Join(host, "PxRepository")); err != nil {
+		t.Fatalf("RemoveAll: %v", err)
+	}
+	for i := 0; i < 20; i++ {
+		got, err := hub.Inventory()
+		if err != nil || got != svc {
+			t.Fatalf("call %d inside the window: %v", i, err)
+		}
+	}
+
+	// Once the window is over the folder is checked again, and the loss is reported.
+	hub.checkedAt = time.Now().Add(-2 * recheckEvery)
+	if _, err := hub.Inventory(); err == nil {
+		t.Fatal("a folder that went away was not noticed after the window")
 	}
 }
 

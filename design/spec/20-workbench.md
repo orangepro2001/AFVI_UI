@@ -79,7 +79,7 @@ PCB 图像居中、自然尺寸 726×535，位置 x 373..1099、y 178..712，素
 - 后端有当前模型、当前灯的 Median 图（`PxRepository/<模型>/…/MEDIAN/Median_<a>_<b>_<c>.tif`，`c` = 灯号 − 1，即工具栏三个灯泡：`c=0` Light-1 …）时，`frame` 是它的预览（Go 把 TIFF 缩到 1/4 再放成 781 宽；TIFF 本身 5860×4020、8 位灰度）。`size` = TIFF 的像素尺寸，读数栏的 **WH** 就是它，**XY** 是指针在 TIFF 里的像素，**RGB** 是指针下预览像素的灰度（三个分量相同），STRIP 仍是 XY 加上快照的偏移。
 - 没有（`state` 为 `missing` / `unreadable`，或调用失败）时退回设计图里的条带图（`size` 16384×12080），GV 不能量（图上写 “No Median picture of Light-n”），量尺照常可用。
 - 换灯泡 → 重新取那个灯的图（旧的答案晚到会被丢掉）；换模型 / 换主机 → 重新取，并清掉量尺和 GV 框。
-- 仓库只读：Go 从不写 `PxRepository`。TIFF 解码后在内存里留最近 3 张（每张 24 MB）。
+- 仓库只读：Go 从不写 `PxRepository`。仓库通常在网络共享上，所以**每张图一个会话里只读一次**：Go 整个文件一次顺序读入、解码后留在内存里（总量不超过 256 MB，超了丢最久没用的），之后的 `GetMedianView`、每一次 `MeasureGv`（拖框时每秒几十次）都不再碰共享——不查目录、不查文件日期、不读 XML。前端同样按灯留住 `MedianView`（预览 data URL），来回切灯泡不再向后端要。要重新读：在 Connector 对话框里再点一次 Apply（`ReloadPictures` + `inventoryEpoch`），或重启应用。
 
 ### GV 工具（工具栏 A3）
 

@@ -99,6 +99,8 @@ func TestMedianViewMissingAndUnreadable(t *testing.T) {
 	}
 
 	writeFile(t, filepath.Join(dir, "Median_0_1_2.tif"), "not a tiff")
+	// The lookup of Light-3 was remembered as "none": the new file shows after a reload.
+	svc.ReloadPictures()
 	view, err = svc.MedianView(3)
 	if err != nil || view.State != StateUnreadable || view.Note == "" {
 		t.Errorf("garbage = %+v, %v", view, err)
@@ -230,7 +232,7 @@ func TestMedianFileChoice(t *testing.T) {
 	}
 }
 
-func TestMedianCacheFollowsTheFile(t *testing.T) {
+func TestMedianPictureIsReadOnceAndServedFromMemory(t *testing.T) {
 	svc, dir := medianFixture(t)
 	path := filepath.Join(dir, "Median_0_1_0.tif")
 
@@ -240,36 +242,119 @@ func TestMedianCacheFollowsTheFile(t *testing.T) {
 	}
 	again, _ := svc.medianPicture(path)
 	if again != first {
-		t.Error("the same unchanged file was decoded twice")
+		t.Error("the same picture was decoded twice")
 	}
 
-	// A new file under the same name (another modification time) is read again.
+	// A new file under the same name (and a later date) is not looked at: the share is not asked.
 	writeGrayTiff(t, path, 80, 40, func(int, int) uint8 { return 99 })
-	later := first.mod + 5_000_000_000
-	if err := os.Chtimes(path, time.Unix(0, later), time.Unix(0, later)); err != nil {
+	later := time.Now().Add(time.Hour)
+	if err := os.Chtimes(path, later, later); err != nil {
 		t.Fatal(err)
 	}
-	changed, err := svc.medianPicture(path)
-	if err != nil || changed == first {
-		t.Fatalf("changed file served from the cache: %v", err)
+	if stats, _ := svc.MeasureGv(1, GvBox{W: 80, H: 40}); stats.Mean != 105 {
+		t.Errorf("mean = %v: the picture was read again", stats.Mean)
 	}
+
+	// Until the pictures are explicitly reloaded.
+	svc.ReloadPictures()
 	if stats, _ := svc.MeasureGv(1, GvBox{W: 80, H: 40}); stats.Mean != 99 {
-		t.Errorf("mean = %v after the file changed", stats.Mean)
+		t.Errorf("mean = %v after ReloadPictures", stats.Mean)
 	}
 }
 
-func TestMedianCacheIsBounded(t *testing.T) {
+func TestMedianNeedsNoDiskOnceLoaded(t *testing.T) {
 	svc, dir := medianFixture(t)
-	for i := 0; i < maxMedianCache+3; i++ {
+	view, err := svc.MedianView(1)
+	if err != nil || view.State != StateOK {
+		t.Fatalf("view = %+v, %v", view, err)
+	}
+	before, _ := svc.MeasureGv(1, GvBox{X: 5, Y: 5, W: 30, H: 20})
+
+	// The whole repository and the inventory go away: a warm session does not notice, which is
+	// what keeps a drag from asking the network share dozens of times a second.
+	base := filepath.Dir(svc.root)
+	if err := os.RemoveAll(filepath.Join(base, "PxRepository")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(svc.root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); err == nil {
+		t.Fatal("the repository is still there")
+	}
+	for i := 0; i < 50; i++ {
+		got, err := svc.MeasureGv(1, GvBox{X: 5, Y: 5, W: 30, H: 20})
+		if err != nil || got != before {
+			t.Fatalf("measure %d = %+v, %v", i, got, err)
+		}
+	}
+	again, err := svc.MedianView(1)
+	if err != nil || again.Image.URL != view.Image.URL || again.State != StateOK {
+		t.Errorf("view after the disk went = %+v, %v", again, err)
+	}
+	// A light that was never loaded needs the file: it is gone now.
+	if other, _ := svc.MedianView(2); other.State != StateUnreadable {
+		t.Errorf("Light-2 = %+v", other)
+	}
+}
+
+func TestMedianLookupIsRememberedPerModel(t *testing.T) {
+	svc, dir := medianFixture(t)
+	if view, _ := svc.MedianView(3); view.State != StateMissing {
+		t.Fatalf("Light-3 = %+v", view)
+	}
+	// A picture that shows up later is not noticed (no new look at the share) ...
+	writeGrayTiff(t, filepath.Join(dir, "Median_0_1_2.tif"), 80, 40, halves)
+	if view, _ := svc.MedianView(3); view.State != StateMissing {
+		t.Errorf("Light-3 = %+v: the folder was walked again", view)
+	}
+	// ... until the pictures are reloaded.
+	svc.ReloadPictures()
+	if view, _ := svc.MedianView(3); view.State != StateOK {
+		t.Errorf("Light-3 after ReloadPictures = %+v", view)
+	}
+}
+
+func TestMedianCacheIsBoundedByMemory(t *testing.T) {
+	svc, dir := medianFixture(t)
+	old := maxMedianBytes
+	maxMedianBytes = 3 * 64
+	defer func() { maxMedianBytes = old }()
+
+	for i := 0; i < 6; i++ {
 		path := filepath.Join(dir, "extra", strings.Repeat("a", i+1)+".tif")
 		writeGrayTiff(t, path, 8, 8, halves)
 		if _, err := svc.medianPicture(path); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if n := len(svc.medianCache); n != maxMedianCache {
-		t.Errorf("cache holds %d pictures, want %d", n, maxMedianCache)
+	if n := len(svc.medianCache); n != 3 {
+		t.Errorf("cache holds %d pictures of 64 bytes within 192, want 3", n)
 	}
+
+	// The picture just asked for stays even when it alone is over the budget.
+	maxMedianBytes = 10
+	last := filepath.Join(dir, "extra", "big.tif")
+	writeGrayTiff(t, last, 8, 8, halves)
+	if _, err := svc.medianPicture(last); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(svc.medianCache); n != 1 || svc.medianCache[0].path != last {
+		t.Errorf("cache = %d pictures", n)
+	}
+}
+
+func TestReadGrayDecodesFromMemory(t *testing.T) {
+	// readGray decodes from memory: the same pixels as decoding straight from the file.
+	svc, dir := medianFixture(t)
+	g, err := readGray(filepath.Join(dir, "Median_0_1_0.tif"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.w != 80 || g.h != 40 || g.pix[0] != 10 || g.pix[79] != 200 {
+		t.Errorf("layer = %dx%d, first %d last %d", g.w, g.h, g.pix[0], g.pix[79])
+	}
+	_ = svc
 }
 
 func TestMedianNeverWritesTheRepository(t *testing.T) {
@@ -333,3 +418,7 @@ func TestRealMedianPicture(t *testing.T) {
 		t.Errorf("Light-2 = %+v", second)
 	}
 }
+
+func writeEmptyDir(path string) error { return os.MkdirAll(path, 0o755) }
+
+func removeFile(path string) error { return os.Remove(path) }

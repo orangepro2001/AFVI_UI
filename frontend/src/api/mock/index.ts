@@ -125,6 +125,9 @@ export function createMockApi(options: MockApiOptions = {}): ApiClient {
 
     ...createMockMeasure(),
 
+    // The browser keeps no journal.
+    async recordOps() {},
+
     ...createMockConnector(),
 
     onSystemStats(listener) {

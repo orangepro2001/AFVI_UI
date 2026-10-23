@@ -4,7 +4,8 @@
 // Run from the repository root: go run scripts/devapi.go [-addr 127.0.0.1:8099] [-config <file>]
 // The browser reaches it through ?api=http://127.0.0.1:8099. It never touches the configuration of
 // the installed app (%AppData%\AFVI-UI): by default it keeps its own git-ignored .dev/connector.json,
-// which is filled from the reference data in design/repo/{FM1,FM2,BM} the first time. The folders can
+// which is filled from the reference data in design/repo/{FM1,FM2,BM} the first time (the operation
+// journal of a run goes to .dev/journal/ as well). The folders can
 // be changed in the Connector dialog; -config picks another file.
 package main
 
@@ -21,6 +22,7 @@ import (
 
 	"afvi/ui/internal/connector"
 	"afvi/ui/internal/inventory"
+	"afvi/ui/internal/journal"
 )
 
 // devConfig is the development configuration file, relative to the repository root.
@@ -28,6 +30,9 @@ const devConfig = ".dev/connector.json"
 
 // devRoiDir keeps the ROIs the developer draws; the installed app's folder is never touched.
 const devRoiDir = ".dev/roi"
+
+// devJournalDir keeps the operation journals of development runs, apart from the installed app's.
+const devJournalDir = ".dev/journal"
 
 // referenceRoot holds the reference data of the three hosts: design/repo/FM1, FM2 and BM.
 const referenceRoot = "design/repo"
@@ -51,6 +56,14 @@ func main() {
 		seedFromReference(hub)
 	}
 
+	// The journal of this run; a run that is killed leaves an open file, which the next start closes.
+	ops, err := journal.Open(devJournalDir, journal.Info{Version: "devapi", Platform: "dev"})
+	if err != nil {
+		log.Printf("operation journal: %v", err)
+	} else {
+		log.Printf("journal: %s", ops.Path())
+	}
+
 	log.Printf("config: %s", file)
 	if active := hub.Config().Active; active == "" {
 		log.Printf("no host configured")
@@ -59,7 +72,7 @@ func main() {
 	}
 	log.Printf("listening on http://%s", *addr)
 
-	http.HandleFunc("/api/", apiHandler(hub))
+	http.HandleFunc("/api/", apiHandler(hub, ops))
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
@@ -92,7 +105,7 @@ func seedFromReference(hub *connector.Hub) {
 }
 
 // apiHandler serves the /api/<Method> routes.
-func apiHandler(hub *connector.Hub) http.HandlerFunc {
+func apiHandler(hub *connector.Hub, ops *journal.Journal) http.HandlerFunc {
 	methods := map[string]func(*http.Request) (any, error){
 		"GetModels": func(*http.Request) (any, error) {
 			svc, err := hub.Inventory()
@@ -187,6 +200,16 @@ func apiHandler(hub *connector.Hub) http.HandlerFunc {
 				return nil, err
 			}
 			return svc.MeasureGv(in.Light, in.GvBox)
+		},
+		"RecordOps": func(r *http.Request) (any, error) {
+			if r.Method != http.MethodPost {
+				return nil, errMethodNotAllowed
+			}
+			var batch []journal.Op
+			if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+				return nil, &statusError{code: http.StatusBadRequest, msg: err.Error()}
+			}
+			return nil, ops.RecordOps(batch)
 		},
 		"GetConnector": func(*http.Request) (any, error) {
 			return hub.Config(), nil

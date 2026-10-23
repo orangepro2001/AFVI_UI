@@ -3,6 +3,7 @@
 import {connector} from '../models';
 import {inventory} from '../models';
 import {main} from '../models';
+import {journal} from '../models';
 
 export function CheckMachinePath(arg1:string):Promise<connector.PathCheck>;
 
@@ -25,6 +26,8 @@ export function GetTeachSpec():Promise<inventory.TeachSpec>;
 export function MeasureGv(arg1:number,arg2:inventory.GvBox):Promise<inventory.GvStats>;
 
 export function PickFolder(arg1:string):Promise<string>;
+
+export function RecordOps(arg1:Array<journal.Op>):Promise<void>;
 
 export function ResetAlignRois():Promise<Array<inventory.AlignRoi>>;
 

@@ -3,6 +3,7 @@ package inventory
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"os"
@@ -229,5 +230,42 @@ func TestUserDirNeverInsideMachineData(t *testing.T) {
 		if err := svc.SetUserDir(dir); err == nil {
 			t.Errorf("%s accepted", dir)
 		}
+	}
+}
+
+func TestAlignPictureIsComposedOncePerSession(t *testing.T) {
+	svc, inv, _ := alignFixture(t, true)
+	first, err := svc.AlignView()
+	if err != nil || first.State != StateOK {
+		t.Fatalf("view = %+v, %v", first, err)
+	}
+
+	// The layers go away: a warm session neither looks for nor reads them again, also not for a save.
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(inv), "PxRepository", "m1")); err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.AlignView()
+	if err != nil || second.State != StateOK || second.Image.URL != first.Image.URL {
+		t.Fatalf("view after the layers went = %.60s %q, %v", second.Image.URL, second.State, err)
+	}
+	if _, err := svc.SaveAlignRois([]AlignRoi{{ID: "A", X: 1, Y: 1, W: 20, H: 20}}); err != nil {
+		t.Errorf("save without the layers: %v", err)
+	}
+
+	svc.ReloadPictures()
+	if view, _ := svc.AlignView(); view.State != StateMissing {
+		t.Errorf("state after ReloadPictures = %q", view.State)
+	}
+}
+
+func TestAlignPicturesStayForTheLastFewModels(t *testing.T) {
+	svc, _, _ := alignFixture(t, true)
+	for i := 0; i < maxAlignPictures+3; i++ {
+		if _, err := svc.alignPicture(fmt.Sprintf("model-%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(svc.pictures) != maxAlignPictures || len(svc.pictureList) != maxAlignPictures {
+		t.Errorf("pictures = %d, list = %d", len(svc.pictures), len(svc.pictureList))
 	}
 }

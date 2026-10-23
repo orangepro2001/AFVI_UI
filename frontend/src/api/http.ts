@@ -9,6 +9,7 @@ import type {
   MedianView,
   ModelEntry,
   NodeAnalysis,
+  OperationRecord,
   PathCheck,
   TeachSnapshot,
 } from './types'
@@ -29,6 +30,11 @@ async function readError(response: Response): Promise<Error> {
   return new Error(`HTTP ${response.status}`)
 }
 
+/** The journal call of the dev server (the Wails window has its own). */
+export interface JournalCalls {
+  recordOps(ops: OperationRecord[]): Promise<void>
+}
+
 /**
  * InventoryCalls and ConnectorCalls over the dev server of scripts/devapi.go:
  * GET <base>/api/<Method>, POST for SaveConnector.
@@ -36,7 +42,7 @@ async function readError(response: Response): Promise<Error> {
 export function createHttpCalls(
   baseUrl: string,
   fetchFn: typeof fetch = (...args) => fetch(...args),
-): InventoryCalls & ConnectorCalls {
+): InventoryCalls & ConnectorCalls & JournalCalls {
   const root = trimBase(baseUrl)
 
   async function send<T>(input: string, init?: RequestInit): Promise<T> {
@@ -69,6 +75,7 @@ export function createHttpCalls(
     resetAlignRois: () => post<AlignRoi[]>('/api/ResetAlignRois', {}),
     getMedianView: (light) => get<MedianView>(`/api/GetMedianView?light=${light}`),
     measureGv: (light, box) => post<GvStats>('/api/MeasureGv', { light, ...box }),
+    recordOps: (ops) => post<void>('/api/RecordOps', ops),
     getConnector: () => get<ConnectorConfig>('/api/GetConnector'),
     checkMachinePath: (path) =>
       get<PathCheck>(`/api/CheckMachinePath?path=${encodeURIComponent(path)}`),

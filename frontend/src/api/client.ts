@@ -16,6 +16,7 @@ import type {
   LogEntry,
   MedianSetup,
   MedianView,
+  OperationRecord,
   ModelEntry,
   NodeAnalysis,
   PathCheck,
@@ -62,6 +63,11 @@ export interface ApiClient {
    * has a preview). The box is in pixels of `MedianView.size`.
    */
   measureGv(light: number, box: GvBox): Promise<GvStats>
+  /**
+   * Appends operations of the user to the journal of this session (a file in the user's data
+   * folder). Batched by the frontend; a failure is retried, never shown.
+   */
+  recordOps(ops: OperationRecord[]): Promise<void>
   /** The signed-in user and the accounts of the "Log in/out" dialog. */
   getSession(): Promise<SessionInfo>
   /** The models of the "Choose Model Names" dialog. */

@@ -46,6 +46,10 @@ export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
 }
 
+export function RecordOps(arg1) {
+  return window['go']['main']['App']['RecordOps'](arg1);
+}
+
 export function ResetAlignRois() {
   return window['go']['main']['App']['ResetAlignRois']();
 }

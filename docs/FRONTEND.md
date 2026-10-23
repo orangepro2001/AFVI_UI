@@ -55,6 +55,7 @@ interface ApiClient {
   getWorkbench(): Promise<WorkbenchSnapshot>   // 条带图、缩略图、单元格图、读数
   getMedianView(light): Promise<MedianView>    // 中间的图：仓库里当前模型、当前灯的 Median 图（Go）
   measureGv(light, box): Promise<GvStats>      // 在完整 TIFF 上量一个框的灰度（Go）
+  recordOps(ops): Promise<void>                // 把用户的操作追加到本次运行的留档文件（Go，见 design/spec/96-journal.md）
   getTeach(): Promise<TeachSnapshot>           // Unit / Dummy 规格树（Go：解析 PxInventory）
   getNodeAnalysis(nodeId): Promise<NodeAnalysis> // 选中节点的三张分析表（Go）
   getModels(): Promise<ModelEntry[]>           // "Choose Model Names" 的列表（Go）
@@ -72,7 +73,7 @@ interface ApiClient {
 数据类型在 `api/types.ts`，是将来 Go 要实现的契约。
 
 - `api/mock/`：带种子的模拟后端（`data.ts` 造数据，`index.ts` 让图表和日志动起来）。浏览器里全部由它回答。
-- `api/wails.ts`：只包含 Go 已经实现的方法：`getAppInfo`、用 Wails 运行时实现的全屏切换，解析 `PxInventory` 的五个方法（`getModels`、`getActiveModel`、`selectModel`、`getTeach`、`getNodeAnalysis`，实现在 `internal/inventory`，映射规则见 `design/spec/90-inventory.md`）、Align 图与 ROI 的三个方法，以及 Median 图与 GV 测量的两个方法（`getMedianView`、`measureGv`；Go 取不到图时 `getMedianView` 退回模拟，`measureGv` 跟着那张图走：图来自模拟就由模拟量，来自 Go 就由 Go 量，失败不退回），以及 Connector 的四个方法（`getConnector`、`checkMachinePath`、`saveConnector`、`pickFolder`，实现在 `internal/connector`，见 `design/spec/95-connector.md`）。`api/inventory.ts` 把这五个调用包起来：Go 报错（比如没有配置主机或找不到 `PxInventory`）就退回模拟数据并在控制台警告一次；Align / ROI 的三张图 Go 还没有，仍取自模拟。Connector 的四个方法不退回模拟数据，Go 的错误原样抛给对话框。
+- `api/wails.ts`：只包含 Go 已经实现的方法：`getAppInfo`、用 Wails 运行时实现的全屏切换，解析 `PxInventory` 的五个方法（`getModels`、`getActiveModel`、`selectModel`、`getTeach`、`getNodeAnalysis`，实现在 `internal/inventory`，映射规则见 `design/spec/90-inventory.md`）、Align 图与 ROI 的三个方法，以及 Median 图与 GV 测量的两个方法（`getMedianView`、`measureGv`；Go 取不到图时 `getMedianView` 退回模拟，`measureGv` 跟着那张图走：图来自模拟就由模拟量，来自 Go 就由 Go 量，失败不退回）、操作留档的 `recordOps`（Go 追加到用户数据目录里本次运行的 XML，见 `design/spec/96-journal.md`），以及 Connector 的四个方法（`getConnector`、`checkMachinePath`、`saveConnector`、`pickFolder`，实现在 `internal/connector`，见 `design/spec/95-connector.md`）。`api/inventory.ts` 把这五个调用包起来：Go 报错（比如没有配置主机或找不到 `PxInventory`）就退回模拟数据并在控制台警告一次；Align / ROI 的三张图 Go 还没有，仍取自模拟。Connector 的四个方法不退回模拟数据，Go 的错误原样抛给对话框。
 - `api/index.ts` 的 `createApi()`：浏览器里是模拟后端；Wails 窗口里是 `{ ...mock, ...wails }`，也就是 Go 实现了的用 Go，其余仍用模拟。这样可以逐个方法迁移，窗口里的界面始终是完整的。
 - 浏览器里看真实数据：`go run scripts/devapi.go`（默认 `127.0.0.1:8099`，`-config <文件>` 指定 Connector 配置文件；缺省是仓库里被 git 忽略的 `.dev/connector.json`，第一次启动时用 `design/repo/{FM1,FM2,BM}` 生成，从不读写已安装应用的 `%AppData%\AFVI-UI\connector.json`；在仓库根目录运行），再打开 `http://localhost:5173/?api=http://127.0.0.1:8099`（`scripts/snap.sh --query 'freeze&api=http://127.0.0.1:8099'` 同理）。只有开发构建认 `?api=`；连不上就退回模拟数据。数据位置不再是环境变量或目录查找，而是 Connector 里的配置（本地 JSON 文件），配置与切换见 `design/spec/95-connector.md`。
 - 页面用 `useApi()`（`provide/inject`）取客户端，测试里可以直接注入假实现。
@@ -172,5 +173,6 @@ interface ApiClient {
 - 单元测试放在被测文件旁边（`*.test.ts`），跨文件的契约放 `frontend/tests/`。
 - 组件测试用 `@vue/test-utils` + happy-dom（参见 `DataGrid.test.ts`）。
 - 选中节点相关：`stores/teach.ts` 的 `select(id)` 决定查看器模式（`strip` / `align` / `blank`）和分析表（`getNodeAnalysis`，失败时表清空）；`stores/workbench.ts` 的 `toolsLocked` 在非 `strip` 模式锁住工具栏，`pointerSeen` 控制 Align 读数栏是否出现。
+- 操作留档：`journal/`（`recorder.ts` 批量发送、`observe.ts` 把 store 的变化记成操作、`start.ts` 在 `main.ts` 里启动，组件里用 `record(kind, attrs)`）把用户的操作经 `api.recordOps` 交给 Go，写成 `%AppData%\AFVI-UI\journal\` 里本次运行的 XML 文件（格式与种类见 `design/spec/96-journal.md`）。图片和测量不会反复访问共享盘：Go 的图片缓存见 `design/spec/90-inventory.md`，前端按灯留住 Median 图的答案（`stores/workbench.ts`）。
 - 左侧 rail 的对话框（Login / Choose Model Names / Load grab images / Generate Option / Median）、右缘的设置面板（`ConfigPanel`，值在 `stores/config.ts`）和加载遮罩是**窗口级**的：挂在 `layouts/AppShell.vue`，状态在 `stores/app.ts`（`loginOpen`、`modelOpen`、`grabOpen`、`generateOpen`、`medianOpen`、`configOpen`、`busy` 与 `runBusy(ms)`），任何页面点 rail 都会触发。新加 rail 动作：在 `AppShell.vue` 的 `onRailSelect` 里加一个 case，对话框放 `features/dialogs/`。
 - 模拟后端提供 `live: false` 选项，让数据停在种子上，测试结果稳定。

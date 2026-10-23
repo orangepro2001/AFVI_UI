@@ -86,9 +86,21 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   /** Answers of getMedianView come back out of order: only the newest one may land. */
   let medianRequest = 0
 
-  async function fetchMedian(): Promise<MedianView | null> {
+  /**
+   * The Median pictures fetched so far, by light. A picture is read from the repository (a network
+   * share) once and kept by the backend; this keeps the answer too, so that going back to a light
+   * is no trip to the backend at all (the answer carries the whole preview). A different model or
+   * host starts over.
+   */
+  const medianCache = new Map<number, MedianView>()
+
+  async function fetchMedian(lightId: number): Promise<MedianView | null> {
+    const cached = medianCache.get(lightId)
+    if (cached) return cached
     try {
-      return await api.getMedianView(light.value)
+      const view = await api.getMedianView(lightId)
+      medianCache.set(lightId, view)
+      return view
     } catch {
       return null
     }
@@ -97,7 +109,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   /** Reads the Median picture of the selected light again (another light, model or host). */
   async function loadMedian() {
     const ticket = ++medianRequest
-    const next = await fetchMedian()
+    const next = await fetchMedian(light.value)
     if (ticket !== medianRequest) return
     median.value = next
     medianLoaded.value = true
@@ -122,7 +134,9 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   watch(
     () => [app.model?.name, app.inventoryEpoch] as const,
     (now, before) => {
-      if (snapshot.value && (now[0] !== before[0] || now[1] !== before[1])) void loadMedian()
+      if (now[0] === before[0] && now[1] === before[1]) return
+      medianCache.clear()
+      if (snapshot.value) void loadMedian()
     },
   )
 

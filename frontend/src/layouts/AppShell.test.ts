@@ -6,7 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiKey } from '@/api/client'
 import { createMockApi } from '@/api/mock'
 import type { ModelEntry } from '@/api/types'
+import GenerateOptionDialog from '@/features/dialogs/GenerateOptionDialog.vue'
+import MedianDialog from '@/features/dialogs/MedianDialog.vue'
 import ModelSelectDialog from '@/features/dialogs/ModelSelectDialog.vue'
+import { startJournal } from '@/journal'
+import type { Recorder } from '@/journal/recorder'
 import { useAppStore } from '@/stores/app'
 import AppShell from './AppShell.vue'
 
@@ -79,6 +83,7 @@ describe('AppShell', () => {
   })
 
   afterEach(() => {
+    startJournal(null)
     cleanup?.()
     cleanup = undefined
     vi.useRealTimers()
@@ -90,6 +95,45 @@ describe('AppShell', () => {
     cleanup = () => mounted.wrapper.unmount()
     return mounted
   }
+
+  /** Collects what the shell writes to the journal. */
+  function journal() {
+    const written: { kind: string; attrs: unknown }[] = []
+    const recorder: Recorder = {
+      record: (kind, attrs) => void written.push({ kind, attrs }),
+      settle: () => undefined,
+      flush: async () => undefined,
+      dispose: () => undefined,
+    }
+    startJournal(recorder)
+    return written
+  }
+
+  it("writes the rail buttons, the fullscreen button and the dialogs' choices to the journal", async () => {
+    const written = journal()
+    const { wrapper, app } = await setup()
+    const store = app.runWithContext(() => useAppStore())
+
+    railButton('Model').click()
+    await flushPromises()
+    expect(written).toContainEqual({ kind: 'rail', attrs: { id: 'model' } })
+
+    store.medianOpen = true
+    store.generateOpen = true
+    await flushPromises()
+    wrapper.findComponent(MedianDialog).vm.$emit('save', { lights: [2, 3], cells: [4, 9, 20] })
+    wrapper
+      .findComponent(GenerateOptionDialog)
+      .vm.$emit('confirm', { light: 'all', mt: true, sr: false })
+    expect(written).toContainEqual({
+      kind: 'median.save',
+      attrs: { lights: '2,3', n: 3, cells: '4,9,20' },
+    })
+    expect(written).toContainEqual({
+      kind: 'generate.confirm',
+      attrs: { light: 'all', mt: true, sr: false },
+    })
+  })
 
   it('opens the model dialog from the rail', async () => {
     const { wrapper, app } = await setup()

@@ -39,7 +39,12 @@ export function createApi(): ApiClient {
     typeof location !== 'undefined' ? devApiUrl(location.search, import.meta.env.DEV) : null
   if (url) {
     const calls = createHttpCalls(url)
-    return { ...mock, ...createInventoryApi(calls, mock), ...createConnectorApi(calls) }
+    return {
+      ...mock,
+      ...createInventoryApi(calls, mock),
+      ...createConnectorApi(calls),
+      recordOps: calls.recordOps,
+    }
   }
   return mock
 }

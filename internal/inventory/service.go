@@ -22,16 +22,26 @@ var channelNames = map[int]string{
 // Service reads a PxInventory directory. All methods are safe for concurrent use.
 type Service struct {
 	root string
+	// repo is the PxRepository folder (SetRepoDir); Open guesses it as the folder next to PxInventory.
+	repo string
 
 	mu     sync.Mutex
 	active string
 	// userDir is where the user's own ROI files go ("" until SetUserDir).
 	userDir string
-	// picture is the last composed align picture.
-	picture *composed
+	// The pictures are read from the repository, which is usually a network share, so each one is
+	// read once per session and then served from memory: nothing below touches the disk again
+	// until ReloadPictures. pictures holds the composed Align pictures by model, medianFiles the
+	// Median TIFFs of a model by light, surface and resolutions what picks among
+	// the folders of a model (the host's Surface; the machine's and the model's resolution).
+	pictures    map[string]*composed
+	pictureList []string
+	medianFiles map[string]*medianLookup
+	surface     string
+	resolutions []string
 
-	// medianMu serializes the decoding of Median pictures; medianCache holds the last few, most
-	// recently used last.
+	// medianMu serializes the decoding of Median pictures; medianCache holds the decoded ones, most
+	// recently used last, within maxMedianBytes.
 	medianMu    sync.Mutex
 	medianCache []*medianEntry
 
@@ -44,7 +54,7 @@ func Open(root string) (*Service, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrNotFound, root)
 	}
-	return &Service{root: dir, cache: newXMLCache()}, nil
+	return &Service{root: dir, repo: siblingDir(dir, "PxRepository"), cache: newXMLCache()}, nil
 }
 
 // Root returns the normalized PxInventory directory.
@@ -99,6 +109,14 @@ func (s *Service) Active() (ActiveModel, error) {
 		return ActiveModel{}, errors.New("inventory: no models available")
 	}
 	return s.activeModel(active)
+}
+
+// ActiveName is the name of the active model as far as it is known without looking at the disk:
+// empty until the first Active, Select or picture request has settled it.
+func (s *Service) ActiveName() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.active
 }
 
 // Select switches the active model; the name must exist.
@@ -276,7 +294,7 @@ func (s *Service) applicationInfo() (string, string) {
 // modelResolution returns the resolution text of a model, preferring a PxRepository decimal dir.
 func (s *Service) modelResolution(name string, fallback string) string {
 	base := modelBaseName(name)
-	repo := filepath.Join(filepath.Dir(s.root), "PxRepository", strings.ToLower(base))
+	repo := filepath.Join(s.repoDir(), strings.ToLower(base))
 	entries, err := os.ReadDir(repo)
 	if err == nil {
 		subdirs := make([]string, 0, len(entries))

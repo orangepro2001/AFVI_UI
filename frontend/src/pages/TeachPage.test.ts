@@ -113,6 +113,22 @@ describe('TeachPage', () => {
     expect(wrapper.find('[aria-label="Select"]').exists()).toBe(false)
   })
 
+  it('reads the Metal picture again when the list was dropped under an open Metal node', async () => {
+    const wrapper = await mountPage()
+    const teach = useTeachStore()
+    const alignRoi = useAlignRoiStore()
+    teach.select('u-metal')
+    await flushPromises()
+    expect(alignRoi.view).not.toBeNull()
+
+    // Another host was chosen: the store lets go of its picture and ROIs.
+    alignRoi.$patch({ view: null })
+    await flushPromises()
+
+    expect(alignRoi.view).not.toBeNull()
+    expect(wrapper.findAll('rect[data-roi]').length).toBeGreaterThan(0)
+  })
+
   it('unlocks the toolbar on unmount', async () => {
     const wrapper = await mountPage()
     const teach = useTeachStore()
